@@ -113,24 +113,13 @@ impl FromStr for Priority {
 // TransitionContext
 // ---------------------------------------------------------------------------
 
+#[derive(Default)]
 pub struct TransitionContext {
     pub assignee: Option<Creator>,
     pub result: Option<String>,
     pub artifacts: Option<Vec<String>>,
     pub log: Option<String>,
     pub blocked_reason: Option<String>,
-}
-
-impl Default for TransitionContext {
-    fn default() -> Self {
-        Self {
-            assignee: None,
-            result: None,
-            artifacts: None,
-            log: None,
-            blocked_reason: None,
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
