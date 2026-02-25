@@ -65,6 +65,10 @@ pub struct AddArgs {
     #[argh(option)]
     pub due: Option<String>,
 
+    /// detailed description (supports multi-line)
+    #[argh(option, short = 'd', long = "description")]
+    pub description: Option<String>,
+
     /// creator name
     #[argh(option)]
     pub creator: Option<String>,
@@ -277,6 +281,14 @@ pub struct EditArgs {
     /// new due date
     #[argh(option)]
     pub due: Option<String>,
+
+    /// new description
+    #[argh(option, short = 'd', long = "description")]
+    pub description: Option<String>,
+
+    /// clear the description
+    #[argh(switch, long = "clear-content")]
+    pub clear_content: bool,
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
