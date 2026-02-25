@@ -207,4 +207,22 @@ mod tests {
         assert!(toon_str.contains("error:"), "TOON error should contain 'error:' key");
         assert!(toon_str.contains("E_TASK_NOT_FOUND"), "TOON error should contain error code");
     }
+
+    #[test]
+    fn toon_skips_empty_fields() {
+        let task = Task::new("abc", "Simple task");
+        let out = Output::new(false, false, false);
+        let toon_str = out.task(&task);
+
+        // Should NOT contain empty fields
+        assert!(!toon_str.contains("tags[0]:"), "Should not show empty tags");
+        assert!(!toon_str.contains("artifacts[0]:"), "Should not show empty artifacts");
+        assert!(!toon_str.contains("parent_id: null"), "Should not show null parent_id");
+        assert!(!toon_str.contains("blocked_reason: null"), "Should not show null blocked_reason");
+
+        // Should contain required fields
+        assert!(toon_str.contains("id:"), "Should show id");
+        assert!(toon_str.contains("title:"), "Should show title");
+        assert!(toon_str.contains("status:"), "Should show status");
+    }
 }

@@ -133,16 +133,26 @@ pub struct Task {
     pub creator: Creator,
     pub created_at: DateTime<Utc>,
     pub priority: Priority,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub due: Option<DateTime<Utc>>,
     pub status: Status,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub assignee: Option<Creator>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub blocked_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub artifacts: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub log: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub started_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub finished_at: Option<DateTime<Utc>>,
 }
 
