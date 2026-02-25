@@ -54,8 +54,11 @@ sudo cp target/release/todo /usr/local/bin/
 todo add "Implement JWT auth" -r high -t backend
 todo add "Update README" -t docs
 
-# List tasks (JSON by default)
+# List tasks (TOON format by default - token-efficient for LLMs)
 todo list
+
+# JSON output (for backwards compatibility)
+todo --json list
 
 # Pretty output for humans
 todo -p list
@@ -98,12 +101,41 @@ cancelled  blocked
 
 ## Output Format
 
-- **Default**: JSON (for Agent/AI consumption)
+- **Default**: TOON (Token-Oriented Object Notation - optimized for LLMs, ~18-40% token savings)
+- **With `--json`**: JSON format (for backwards compatibility)
 - **With `-p`**: Human-readable format
 
 ```bash
-todo list           # JSON output
+todo list           # TOON output (default)
+todo --json list    # JSON output
 todo -p list        # Pretty output
+```
+
+### TOON vs JSON Comparison
+
+**TOON** (default, token-efficient):
+```
+id: "019c"
+title: Implement JWT auth
+priority: high
+tags[1]: backend
+status: pending
+```
+
+**JSON** (`--json` flag):
+```json
+{
+  "id": "019c",
+  "title": "Implement JWT auth",
+  "priority": "high",
+  "tags": ["backend"],
+  "status": "pending"
+}
+```
+
+**Pretty** (`-p` flag):
+```
+○ ! 019c [Implement JWT auth] #backend
 ```
 
 ## Agent Integration
@@ -112,7 +144,8 @@ See [docs/agent-integration.md](docs/agent-integration.md) for integrating with 
 
 ## Documentation
 
-- [v0.1.0 Release Notes](docs/v0.1.0-release.md) - Detailed feature list
+- [v0.2.0 Release Notes](docs/v0.2.0-release.md) - TOON output format
+- [v0.1.0 Release Notes](docs/v0.1.0-release.md) - Initial release features
 - [Agent Integration Guide](docs/agent-integration.md) - For AI agents
 
 ## Development
