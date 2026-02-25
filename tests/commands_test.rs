@@ -348,7 +348,7 @@ fn import_creates_tasks_from_json() {
     let result = commands::import::execute(
         &db,
         ImportArgs {
-            json: tmpfile.to_str().unwrap().into(),
+            file: tmpfile.to_str().unwrap().into(),
         },
         &out,
     )

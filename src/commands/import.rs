@@ -8,14 +8,14 @@ use crate::output::Output;
 use crate::task::Task;
 
 pub fn execute(db: &Database, args: ImportArgs, _output: &Output) -> Result<String, TodoError> {
-    let json_str = if args.json == "-" {
+    let json_str = if args.file == "-" {
         let mut buf = String::new();
         std::io::stdin()
             .read_to_string(&mut buf)
             .map_err(TodoError::Io)?;
         buf
     } else {
-        std::fs::read_to_string(&args.json).map_err(TodoError::Io)?
+        std::fs::read_to_string(&args.file).map_err(TodoError::Io)?
     };
 
     let items: Vec<serde_json::Value> = serde_json::from_str(&json_str)

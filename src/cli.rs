@@ -221,9 +221,9 @@ pub struct StatsArgs {
 
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "import")]
-/// Bulk import tasks from JSON
+/// Bulk import tasks from JSON file
 pub struct ImportArgs {
-    /// JSON string of tasks to import
-    #[argh(option)]
-    pub json: String,
+    /// path to JSON file (use "-" for stdin)
+    #[argh(option, short = 'f')]
+    pub file: String,
 }
