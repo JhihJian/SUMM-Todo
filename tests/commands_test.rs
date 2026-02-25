@@ -557,3 +557,188 @@ fn abandon_reverts_in_progress_to_pending() {
     assert_eq!(parsed["status"], "pending");
     assert!(parsed["assignee"].is_null());
 }
+
+#[test]
+fn search_finds_tasks_by_title() {
+    let (db, out) = setup();
+    commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Implement auth".into(),
+            pri: None,
+            tag: vec!["backend".into()],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+    commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Write tests".into(),
+            pri: None,
+            tag: vec!["testing".into()],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    let result = commands::search::execute(
+        &db,
+        SearchArgs {
+            query: "auth".into(),
+            tag: None,
+            status: None,
+            regex: false,
+        },
+        &out,
+    )
+    .unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(parsed.as_array().unwrap().len(), 1);
+    assert_eq!(parsed[0]["title"], "Implement auth");
+}
+
+#[test]
+fn search_with_tag_filter() {
+    let (db, out) = setup();
+    commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Backend auth".into(),
+            pri: None,
+            tag: vec!["backend".into()],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+    commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Frontend auth".into(),
+            pri: None,
+            tag: vec!["frontend".into()],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    let result = commands::search::execute(
+        &db,
+        SearchArgs {
+            query: "auth".into(),
+            tag: Some("backend".into()),
+            status: None,
+            regex: false,
+        },
+        &out,
+    )
+    .unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(parsed.as_array().unwrap().len(), 1);
+    assert_eq!(parsed[0]["title"], "Backend auth");
+}
+
+#[test]
+fn search_with_status_filter() {
+    let (db, out) = setup();
+
+    // Create and start a task
+    let add_result = commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Auth work".into(),
+            pri: None,
+            tag: vec![],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+    let id = extract_id(&add_result);
+    commands::start::execute(
+        &db,
+        StartArgs {
+            id: id.clone(),
+            assignee: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    // Create another pending task
+    commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Auth planning".into(),
+            pri: None,
+            tag: vec![],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    // Search for "Auth" with in_progress filter
+    let result = commands::search::execute(
+        &db,
+        SearchArgs {
+            query: "Auth".into(),
+            tag: None,
+            status: Some("in_progress".into()),
+            regex: false,
+        },
+        &out,
+    )
+    .unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(parsed.as_array().unwrap().len(), 1);
+    assert_eq!(parsed[0]["status"], "in_progress");
+}
+
+#[test]
+fn search_returns_empty_for_no_match() {
+    let (db, out) = setup();
+    commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Write tests".into(),
+            pri: None,
+            tag: vec![],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    let result = commands::search::execute(
+        &db,
+        SearchArgs {
+            query: "nonexistent".into(),
+            tag: None,
+            status: None,
+            regex: false,
+        },
+        &out,
+    )
+    .unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(parsed.as_array().unwrap().len(), 0);
+}

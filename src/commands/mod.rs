@@ -9,6 +9,7 @@ pub mod list;
 pub mod log;
 pub mod next;
 pub mod resume;
+pub mod search;
 pub mod show;
 pub mod start;
 pub mod stats;

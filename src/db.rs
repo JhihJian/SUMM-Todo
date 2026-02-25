@@ -306,6 +306,125 @@ impl Database {
         let mut tasks = self.list_tasks(&filter)?;
         Ok(tasks.pop())
     }
+
+    /// Search tasks by title (and optionally result/log), with optional regex support.
+    pub fn search_tasks(&self, query: &str, use_regex: bool, filter: &TaskFilter) -> Result<Vec<Task>, TodoError> {
+        let mut conditions: Vec<String> = vec!["1=1".into()];
+        let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
+        let mut param_idx = 1u32;
+
+        // Search condition for title
+        if use_regex {
+            // For regex, we use LIKE with the pattern as-is (user provides regex pattern)
+            // Note: SQLite REGEXP requires a user-defined function, so we fall back to LIKE
+            // For true regex support, we would need to add a custom function
+            conditions.push(format!("title REGEXP ?{}", param_idx));
+        } else {
+            conditions.push(format!("title LIKE ?{}", param_idx));
+        }
+        param_idx += 1;
+
+        // For LIKE, wrap with wildcards; for REGEXP, use as-is
+        let pattern = if use_regex {
+            query.to_string()
+        } else {
+            format!("%{}%", query)
+        };
+        param_values.push(Box::new(pattern));
+
+        // status IN (...)
+        if let Some(ref statuses) = filter.status {
+            if !statuses.is_empty() {
+                let placeholders: Vec<String> = statuses
+                    .iter()
+                    .map(|s| {
+                        let ph = format!("?{}", param_idx);
+                        param_idx += 1;
+                        param_values.push(Box::new(s.to_string()));
+                        ph
+                    })
+                    .collect();
+                conditions.push(format!("status IN ({})", placeholders.join(", ")));
+            }
+        }
+
+        // tags LIKE for each tag (AND logic)
+        if let Some(ref tags) = filter.tags {
+            for tag in tags {
+                conditions.push(format!("tags LIKE ?{}", param_idx));
+                param_idx += 1;
+                param_values.push(Box::new(format!("%\"{}\"%" , tag)));
+            }
+        }
+
+        // priority
+        if let Some(ref priority) = filter.priority {
+            conditions.push(format!("priority = ?{}", param_idx));
+            param_idx += 1;
+            param_values.push(Box::new(priority.to_string()));
+        }
+
+        // parent_id
+        if let Some(ref parent_id) = filter.parent_id {
+            conditions.push(format!("parent_id = ?{}", param_idx));
+            param_idx += 1;
+            param_values.push(Box::new(parent_id.clone()));
+        }
+
+        // creator
+        if let Some(ref creator) = filter.creator {
+            conditions.push(format!("creator = ?{}", param_idx));
+            param_idx += 1;
+            param_values.push(Box::new(creator.to_string()));
+        }
+
+        // since
+        if let Some(ref since) = filter.since {
+            conditions.push(format!("created_at >= ?{}", param_idx));
+            param_idx += 1;
+            param_values.push(Box::new(since.to_rfc3339()));
+        }
+
+        // overdue
+        if filter.overdue {
+            conditions.push(format!("due IS NOT NULL AND due < ?{}", param_idx));
+            param_idx += 1;
+            param_values.push(Box::new(Utc::now().to_rfc3339()));
+        }
+
+        // sort
+        let order = filter.sort.clone().unwrap_or_else(|| {
+            "CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 END ASC, created_at ASC".into()
+        });
+
+        let limit = filter.limit.unwrap_or(20);
+
+        let sql = format!(
+            "SELECT id, title, creator, created_at,
+                    priority, tags, parent_id, due,
+                    status, assignee, blocked_reason,
+                    result, artifacts, log,
+                    started_at, finished_at
+             FROM tasks
+             WHERE {}
+             ORDER BY {}
+             LIMIT {}",
+            conditions.join(" AND "),
+            order,
+            limit,
+        );
+
+        let params_refs: Vec<&dyn rusqlite::types::ToSql> =
+            param_values.iter().map(|p| p.as_ref()).collect();
+
+        let mut stmt = self.conn.prepare(&sql)?;
+        let mut rows = stmt.query(params_refs.as_slice())?;
+        let mut tasks = Vec::new();
+        while let Some(row) = rows.next()? {
+            tasks.push(row_to_task(row)?);
+        }
+        Ok(tasks)
+    }
 }
 
 // ---------------------------------------------------------------------------

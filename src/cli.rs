@@ -37,6 +37,7 @@ pub enum Command {
     Edit(EditArgs),
     Undo(UndoArgs),
     Abandon(AbandonArgs),
+    Search(SearchArgs),
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
@@ -276,4 +277,25 @@ pub struct AbandonArgs {
     /// task id
     #[argh(positional)]
     pub id: String,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "search")]
+/// Search tasks by title or content
+pub struct SearchArgs {
+    /// search query
+    #[argh(positional)]
+    pub query: String,
+
+    /// filter by tag
+    #[argh(option, short = 't')]
+    pub tag: Option<String>,
+
+    /// filter by status
+    #[argh(option, short = 's')]
+    pub status: Option<String>,
+
+    /// use regex matching
+    #[argh(switch)]
+    pub regex: bool,
 }
