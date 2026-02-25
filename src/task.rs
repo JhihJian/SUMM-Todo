@@ -130,6 +130,8 @@ pub struct TransitionContext {
 pub struct Task {
     pub id: String,
     pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
     pub creator: Creator,
     pub created_at: DateTime<Utc>,
     pub priority: Priority,
@@ -161,6 +163,7 @@ impl Task {
         Self {
             id: id.into(),
             title: title.into(),
+            content: None,
             creator: Creator::Human,
             created_at: Utc::now(),
             priority: Priority::Medium,
@@ -267,6 +270,7 @@ mod tests {
         let task = Task::new("1", "Test task");
         assert_eq!(task.id, "1");
         assert_eq!(task.title, "Test task");
+        assert!(task.content.is_none());
         assert_eq!(task.status, Status::Pending);
         assert_eq!(task.priority, Priority::Medium);
         assert_eq!(task.creator, Creator::Human);

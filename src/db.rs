@@ -443,6 +443,7 @@ fn row_to_task(row: &Row<'_>) -> Result<Task, TodoError> {
     Ok(Task {
         id: row.get(0)?,
         title: row.get(1)?,
+        content: None, // TODO: Read from DB column after migration (Task #36)
         creator: creator_str.parse::<Creator>()?,
         created_at: DateTime::parse_from_rfc3339(&created_at_str)
             .map_err(|e| TodoError::ParseError(e.to_string()))?
