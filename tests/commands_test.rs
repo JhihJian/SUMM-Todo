@@ -990,3 +990,91 @@ fn export_with_tag_filter() {
     assert_eq!(tasks.len(), 1);
     assert_eq!(tasks[0]["title"], "Backend task");
 }
+
+#[test]
+fn add_with_description() {
+    let (db, out) = setup();
+    let args = AddArgs {
+        title: "Task with content".into(),
+        pri: None,
+        tag: vec![],
+        parent: None,
+        due: None,
+        creator: None,
+        description: Some("Detailed description here".into()),
+    };
+
+    let result = commands::add::execute(&db, args, &out).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(parsed["content"], "Detailed description here");
+}
+
+#[test]
+fn edit_description() {
+    let (db, out) = setup();
+
+    // Create task
+    let add_args = AddArgs {
+        title: "Test".into(),
+        pri: None,
+        tag: vec![],
+        parent: None,
+        due: None,
+        creator: None,
+        description: None,
+    };
+    let result = commands::add::execute(&db, add_args, &out).unwrap();
+    let task: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let id = task["id"].as_str().unwrap().to_string();
+
+    // Edit with description
+    let edit_args = EditArgs {
+        id: id.clone(),
+        title: None,
+        priority: None,
+        tag: vec![],
+        due: None,
+        description: Some("New description".into()),
+        clear_content: false,
+    };
+    commands::edit::execute(&db, edit_args, &out).unwrap();
+
+    // Verify
+    let task = db.get_task(&id).unwrap().unwrap();
+    assert_eq!(task.content, Some("New description".into()));
+}
+
+#[test]
+fn clear_content() {
+    let (db, out) = setup();
+
+    // Create task with content
+    let add_args = AddArgs {
+        title: "Test".into(),
+        pri: None,
+        tag: vec![],
+        parent: None,
+        due: None,
+        creator: None,
+        description: Some("Initial content".into()),
+    };
+    let result = commands::add::execute(&db, add_args, &out).unwrap();
+    let task: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let id = task["id"].as_str().unwrap().to_string();
+
+    // Clear content
+    let edit_args = EditArgs {
+        id: id.clone(),
+        title: None,
+        priority: None,
+        tag: vec![],
+        due: None,
+        description: None,
+        clear_content: true,
+    };
+    commands::edit::execute(&db, edit_args, &out).unwrap();
+
+    // Verify
+    let task = db.get_task(&id).unwrap().unwrap();
+    assert!(task.content.is_none());
+}
