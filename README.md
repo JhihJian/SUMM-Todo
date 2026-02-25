@@ -7,7 +7,7 @@ A local-first CLI tool for Human-Agent task coordination. Both humans and AI age
 ### Quick Install (Linux/macOS)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/todo/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/JhihJian/SUMM-Todo/main/install.sh | bash
 ```
 
 ### Homebrew (macOS)
@@ -20,12 +20,12 @@ brew install todo
 ### cargo install
 
 ```bash
-cargo install --git https://github.com/YOUR_USERNAME/todo
+cargo install --git https://github.com/JhihJian/SUMM-Todo
 ```
 
 ### Download Binary
 
-Download from [Releases](https://github.com/YOUR_USERNAME/todo/releases) for your platform:
+Download from [Releases](https://github.com/JhihJian/SUMM-Todo/releases) for your platform:
 
 | Platform | Binary |
 |----------|--------|
@@ -38,7 +38,7 @@ Download from [Releases](https://github.com/YOUR_USERNAME/todo/releases) for you
 ### From Source
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/todo
+git clone https://github.com/JhihJian/SUMM-Todo
 cd todo
 cargo build --release
 sudo cp target/release/todo /usr/local/bin/

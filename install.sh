@@ -1,10 +1,10 @@
 #!/bin/bash
 # Quick install script for todo CLI
-# Usage: curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/todo/main/install.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/JhihJian/SUMM-Todo/main/install.sh | bash
 
 set -e
 
-REPO="YOUR_USERNAME/todo"
+REPO="JhihJian/SUMM-Todo"
 VERSION="${TODO_VERSION:-latest}"
 
 # Detect OS and architecture
