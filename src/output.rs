@@ -1,55 +1,108 @@
 use crate::error::TodoError;
 use crate::task::{Priority, Status, Task};
 
+/// Output format mode
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum OutputMode {
+    /// TOON format (default, token-efficient for LLMs)
+    Toon,
+    /// JSON format (for backwards compatibility)
+    Json,
+    /// Human-readable format
+    Pretty,
+}
+
 pub struct Output {
-    pretty: bool,
+    mode: OutputMode,
 }
 
 impl Output {
-    pub fn new(pretty: bool) -> Self {
-        Self { pretty }
+    pub fn new(pretty: bool, _toon: bool, json: bool) -> Self {
+        let mode = if pretty {
+            OutputMode::Pretty
+        } else if json {
+            OutputMode::Json
+        } else {
+            // Default to TOON for LLM consumption
+            OutputMode::Toon
+        };
+        Self { mode }
+    }
+
+    /// Create output with JSON mode (for testing)
+    pub fn json() -> Self {
+        Self { mode: OutputMode::Json }
     }
 
     pub fn task(&self, task: &Task) -> String {
-        if self.pretty {
-            self.pretty_task(task)
-        } else {
-            serde_json::to_string_pretty(task).expect("task serialization should not fail")
+        match self.mode {
+            OutputMode::Toon => self.toon_task(task),
+            OutputMode::Json => {
+                serde_json::to_string_pretty(task).expect("task serialization should not fail")
+            }
+            OutputMode::Pretty => self.pretty_task(task),
         }
     }
 
     pub fn task_list(&self, tasks: &[Task]) -> String {
-        if self.pretty {
-            tasks
+        match self.mode {
+            OutputMode::Toon => self.toon_task_list(tasks),
+            OutputMode::Json => {
+                serde_json::to_string_pretty(tasks).expect("task list serialization should not fail")
+            }
+            OutputMode::Pretty => tasks
                 .iter()
                 .map(|t| self.pretty_task(t))
                 .collect::<Vec<_>>()
-                .join("\n\n")
-        } else {
-            serde_json::to_string_pretty(tasks).expect("task list serialization should not fail")
+                .join("\n\n"),
         }
     }
 
     pub fn log(&self, tasks: &[Task]) -> String {
-        if self.pretty {
-            let mut out = String::from("Completed tasks:\n---\n");
-            for t in tasks {
-                out.push_str(&format!("● [{}] {}\n", t.id, t.title));
-                if let Some(ref result) = t.result {
-                    out.push_str(&format!("  → {}\n", result));
-                }
-                if !t.artifacts.is_empty() {
-                    out.push_str(&format!("  📎 {}\n", t.artifacts.join(", ")));
-                }
+        match self.mode {
+            OutputMode::Toon => self.toon_task_list(tasks),
+            OutputMode::Json => {
+                serde_json::to_string_pretty(tasks).expect("log serialization should not fail")
             }
-            out
-        } else {
-            serde_json::to_string_pretty(tasks).expect("log serialization should not fail")
+            OutputMode::Pretty => {
+                let mut out = String::from("Completed tasks:\n---\n");
+                for t in tasks {
+                    out.push_str(&format!("● [{}] {}\n", t.id, t.title));
+                    if let Some(ref result) = t.result {
+                        out.push_str(&format!("  → {}\n", result));
+                    }
+                    if !t.artifacts.is_empty() {
+                        out.push_str(&format!("  📎 {}\n", t.artifacts.join(", ")));
+                    }
+                }
+                out
+            }
         }
     }
 
     pub fn stats(&self, stats: &serde_json::Value) -> String {
-        serde_json::to_string_pretty(stats).expect("stats serialization should not fail")
+        match self.mode {
+            OutputMode::Toon => toon_format::encode_default(stats).unwrap_or_else(|e| {
+                format!("error: failed to encode stats to TOON: {}", e)
+            }),
+            OutputMode::Json | OutputMode::Pretty => {
+                serde_json::to_string_pretty(stats).expect("stats serialization should not fail")
+            }
+        }
+    }
+
+    fn toon_task(&self, task: &Task) -> String {
+        toon_format::encode_default(task).unwrap_or_else(|e| {
+            format!("error: failed to encode task to TOON: {}", e)
+        })
+    }
+
+    fn toon_task_list(&self, tasks: &[Task]) -> String {
+        // Convert slice to Vec since toon_format requires Sized types
+        let tasks_vec: Vec<&Task> = tasks.iter().collect();
+        toon_format::encode_default(&tasks_vec).unwrap_or_else(|e| {
+            format!("error: failed to encode tasks to TOON: {}", e)
+        })
     }
 
     fn pretty_task(&self, task: &Task) -> String {
@@ -87,11 +140,14 @@ impl Output {
 }
 
 pub fn output_error(err: &TodoError) -> String {
-    serde_json::json!({
+    let error_json = serde_json::json!({
         "error": err.code(),
         "message": err.to_string(),
+    });
+    // Errors always output in TOON format for consistency
+    toon_format::encode_default(&error_json).unwrap_or_else(|_e| {
+        format!("error: {}\nmessage: {}", err.code(), err)
     })
-    .to_string()
 }
 
 #[cfg(test)]
@@ -100,9 +156,42 @@ mod tests {
     use crate::task::Task;
 
     #[test]
-    fn json_output_is_valid_json() {
+    fn toon_output_is_valid() {
         let task = Task::new("abc123", "Write tests");
-        let out = Output::new(false);
+        let out = Output::new(false, false, false);
+        let toon_str = out.task(&task);
+        // TOON format should contain key-value pairs
+        assert!(toon_str.contains("id:"), "TOON should contain 'id:' key");
+        assert!(toon_str.contains("abc123"), "TOON should contain id value");
+    }
+
+    #[test]
+    fn toon_list_is_valid() {
+        let tasks = vec![
+            Task::new("1", "First"),
+            Task::new("2", "Second"),
+            Task::new("3", "Third"),
+        ];
+        let out = Output::new(false, false, false);
+        let toon_str = out.task_list(&tasks);
+        // TOON array format uses [n] notation
+        assert!(toon_str.contains("["), "TOON array should use bracket notation");
+    }
+
+    #[test]
+    fn pretty_output_contains_status_icon() {
+        let task = Task::new("abc123", "Write tests");
+        let out = Output::new(true, false, false);
+        let result = out.task(&task);
+        assert!(result.contains("○"), "should contain pending icon");
+        assert!(result.contains("abc123"), "should contain id");
+        assert!(result.contains("Write tests"), "should contain title");
+    }
+
+    #[test]
+    fn json_output_is_valid() {
+        let task = Task::new("abc123", "Write tests");
+        let out = Output::json();
         let json_str = out.task(&task);
         let parsed: serde_json::Value =
             serde_json::from_str(&json_str).expect("should be valid JSON");
@@ -111,36 +200,11 @@ mod tests {
     }
 
     #[test]
-    fn json_list_is_array() {
-        let tasks = vec![
-            Task::new("1", "First"),
-            Task::new("2", "Second"),
-            Task::new("3", "Third"),
-        ];
-        let out = Output::new(false);
-        let json_str = out.task_list(&tasks);
-        let parsed: serde_json::Value =
-            serde_json::from_str(&json_str).expect("should be valid JSON");
-        assert!(parsed.is_array());
-        assert_eq!(parsed.as_array().unwrap().len(), 3);
-    }
-
-    #[test]
-    fn pretty_output_contains_status_icon() {
-        let task = Task::new("abc123", "Write tests");
-        let out = Output::new(true);
-        let result = out.task(&task);
-        assert!(result.contains("○"), "should contain pending icon");
-        assert!(result.contains("abc123"), "should contain id");
-        assert!(result.contains("Write tests"), "should contain title");
-    }
-
-    #[test]
-    fn error_output_is_json() {
+    fn error_output_is_toon() {
         let err = TodoError::TaskNotFound("xyz".into());
-        let json_str = output_error(&err);
-        let parsed: serde_json::Value =
-            serde_json::from_str(&json_str).expect("should be valid JSON");
-        assert_eq!(parsed["error"], "E_TASK_NOT_FOUND");
+        let toon_str = output_error(&err);
+        // TOON format uses key: value syntax
+        assert!(toon_str.contains("error:"), "TOON error should contain 'error:' key");
+        assert!(toon_str.contains("E_TASK_NOT_FOUND"), "TOON error should contain error code");
     }
 }

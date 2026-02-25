@@ -4,7 +4,7 @@ use todo::db::Database;
 use todo::output::Output;
 
 fn setup() -> (Database, Output) {
-    (Database::open_in_memory().unwrap(), Output::new(false))
+    (Database::open_in_memory().unwrap(), Output::json())
 }
 
 fn extract_id(json_str: &str) -> String {

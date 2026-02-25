@@ -8,7 +8,7 @@ use todo::output::{output_error, Output};
 
 fn main() {
     let args: Args = argh::from_env();
-    let output = Output::new(args.pretty);
+    let output = Output::new(args.pretty, args.toon, args.json);
 
     let result = run(args.command, &output);
 

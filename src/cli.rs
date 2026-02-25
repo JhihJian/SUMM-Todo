@@ -9,6 +9,14 @@ pub struct Args {
     /// output in human-readable format
     #[argh(switch, short = 'p')]
     pub pretty: bool,
+
+    /// output in TOON format (token-efficient for LLMs, default)
+    #[argh(switch)]
+    pub toon: bool,
+
+    /// output in JSON format (for backwards compatibility)
+    #[argh(switch)]
+    pub json: bool,
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
