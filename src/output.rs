@@ -154,6 +154,18 @@ impl Output {
             }
         }
 
+        // Show content if present (only in show context, not list)
+        if let Some(ref content) = task.content {
+            if !content.is_empty() {
+                line.push_str("\n\n详细内容:\n");
+                for content_line in content.lines() {
+                    line.push_str(&format!("  {}\n", content_line));
+                }
+                // Remove trailing newline
+                line.pop();
+            }
+        }
+
         line
     }
 }
