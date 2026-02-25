@@ -10,19 +10,6 @@ A local-first CLI tool for Human-Agent task coordination. Both humans and AI age
 curl -sSL https://raw.githubusercontent.com/JhihJian/SUMM-Todo/main/install.sh | bash
 ```
 
-### Homebrew (macOS)
-
-```bash
-brew tap YOUR_USERNAME/tap
-brew install todo
-```
-
-### cargo install
-
-```bash
-cargo install --git https://github.com/JhihJian/SUMM-Todo
-```
-
 ### Download Binary
 
 Download from [Releases](https://github.com/JhihJian/SUMM-Todo/releases) for your platform:
@@ -31,39 +18,56 @@ Download from [Releases](https://github.com/JhihJian/SUMM-Todo/releases) for you
 |----------|--------|
 | Linux x64 | `todo-x86_64-unknown-linux-gnu.tar.gz` |
 | Linux ARM64 | `todo-aarch64-unknown-linux-gnu.tar.gz` |
-| macOS x64 | `todo-x86_64-apple-darwin.tar.gz` |
-| macOS ARM64 | `todo-aarch64-apple-darwin.tar.gz` |
+| macOS Intel | `todo-x86_64-apple-darwin.tar.gz` |
+| macOS Apple Silicon | `todo-aarch64-apple-darwin.tar.gz` |
 | Windows x64 | `todo-x86_64-pc-windows-msvc.zip` |
+
+Extract and place in your PATH:
+
+```bash
+# Linux/macOS
+tar -xzf todo-*.tar.gz
+sudo mv todo /usr/local/bin/
+
+# Windows: extract zip and add to PATH
+```
+
+### cargo install
+
+```bash
+cargo install --git https://github.com/JhihJian/SUMM-Todo
+```
 
 ### From Source
 
 ```bash
 git clone https://github.com/JhihJian/SUMM-Todo
-cd todo
+cd SUMM-Todo
 cargo build --release
 sudo cp target/release/todo /usr/local/bin/
 ```
 
-## Usage
-
-### Core Workflow
+## Quick Start
 
 ```bash
 # Create tasks
 todo add "Implement JWT auth" -r high -t backend
 todo add "Update README" -t docs
 
-# List tasks (JSON by default, -p for pretty)
-todo list -p
+# List tasks (JSON by default)
+todo list
+
+# Pretty output for humans
+todo -p list
 
 # Claim next task (auto-assigns to agent)
-todo next --tag=backend
+todo next
 
 # Complete task
-todo done <id> -m "JWT auth implemented" --artifact="commit:abc123"
+todo done <id> -m "Implemented JWT auth with RS256"
 ```
 
-### Commands
+## Commands
 
 | Command | Description |
 |---------|-------------|
@@ -80,20 +84,7 @@ todo done <id> -m "JWT auth implemented" --artifact="commit:abc123"
 | `stats` | Show task statistics |
 | `import` | Bulk import from JSON |
 
-### Output Format
-
-- Default: JSON (for Agent consumption)
-- With `-p` or `--pretty`: Human-readable format
-
-```bash
-# JSON output
-todo list
-
-# Pretty output
-todo -p list
-```
-
-### Task States
+## Task States
 
 ```
 pending → in_progress → done
@@ -103,21 +94,33 @@ cancelled  blocked
           in_progress (resume)
 ```
 
+**State transitions are strictly enforced.** Terminal states (done, cancelled) cannot be changed.
+
+## Output Format
+
+- **Default**: JSON (for Agent/AI consumption)
+- **With `-p`**: Human-readable format
+
+```bash
+todo list           # JSON output
+todo -p list        # Pretty output
+```
+
 ## Agent Integration
 
-See [docs/agent-integration.md](docs/agent-integration.md) for integrating with AI agents like Claude Code.
+See [docs/agent-integration.md](docs/agent-integration.md) for integrating with AI agents.
+
+## Documentation
+
+- [v0.1.0 Release Notes](docs/v0.1.0-release.md) - Detailed feature list
+- [Agent Integration Guide](docs/agent-integration.md) - For AI agents
 
 ## Development
 
 ```bash
-# Run tests
-cargo test
-
-# Build release
-cargo build --release
-
-# Run clippy
-cargo clippy -- -W clippy::all
+cargo test              # Run tests
+cargo build --release   # Build release binary
+cargo clippy -- -W clippy::all  # Lint
 ```
 
 ## License
