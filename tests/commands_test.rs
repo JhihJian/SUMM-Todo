@@ -1,7 +1,9 @@
+use chrono::{Utc, Duration};
 use todo::cli::*;
 use todo::commands;
 use todo::db::Database;
 use todo::output::Output;
+use todo::task::Task;
 
 fn setup() -> (Database, Output) {
     (Database::open_in_memory().unwrap(), Output::json())
@@ -240,6 +242,7 @@ fn list_filters_by_status() {
             creator: None,
             since: None,
             limit: None,
+            overdue: false,
         },
         &out,
     )
@@ -437,4 +440,43 @@ fn edit_rejects_terminal_states() {
         &out,
     );
     assert!(result.is_err());
+}
+
+#[test]
+fn list_overdue_filters_correctly() {
+    let (db, out) = setup();
+
+    // Create an overdue task (due 2 days ago)
+    let mut task = Task::new("1", "Overdue task");
+    task.due = Some(Utc::now() - Duration::days(2));
+    db.insert_task(&task).unwrap();
+
+    // Create a non-overdue task (due in 2 days)
+    let mut task2 = Task::new("2", "Future task");
+    task2.due = Some(Utc::now() + Duration::days(2));
+    db.insert_task(&task2).unwrap();
+
+    // Create a task with no due date
+    let task3 = Task::new("3", "No due date task");
+    db.insert_task(&task3).unwrap();
+
+    let result = commands::list::execute(
+        &db,
+        ListArgs {
+            status: vec![],
+            tag: vec![],
+            pri: None,
+            parent: None,
+            creator: None,
+            since: None,
+            limit: None,
+            overdue: true,
+        },
+        &out,
+    )
+    .unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    // Only the overdue task should be returned
+    assert_eq!(parsed.as_array().unwrap().len(), 1);
+    assert_eq!(parsed[0]["id"], "1");
 }

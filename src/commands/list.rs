@@ -36,6 +36,7 @@ pub fn execute(db: &Database, args: ListArgs, output: &Output) -> Result<String,
         since,
         limit: args.limit,
         sort: None,
+        overdue: args.overdue,
     };
 
     let tasks = db.list_tasks(&filter)?;

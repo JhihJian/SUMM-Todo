@@ -179,6 +179,10 @@ pub struct ListArgs {
     /// maximum number of results
     #[argh(option)]
     pub limit: Option<i64>,
+
+    /// show only overdue tasks
+    #[argh(switch)]
+    pub overdue: bool,
 }
 
 #[derive(FromArgs, PartialEq, Debug)]

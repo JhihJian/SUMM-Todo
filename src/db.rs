@@ -21,6 +21,7 @@ pub struct TaskFilter {
     pub since: Option<DateTime<Utc>>,
     pub limit: Option<i64>,
     pub sort: Option<String>,
+    pub overdue: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -237,9 +238,15 @@ impl Database {
         // since
         if let Some(ref since) = filter.since {
             conditions.push(format!("created_at >= ?{}", param_idx));
-            // param_idx not incremented further — last parameter
-            let _ = param_idx;
+            param_idx += 1;
             param_values.push(Box::new(since.to_rfc3339()));
+        }
+
+        // overdue
+        if filter.overdue {
+            conditions.push(format!("due IS NOT NULL AND due < ?{}", param_idx));
+            param_idx += 1;
+            param_values.push(Box::new(Utc::now().to_rfc3339()));
         }
 
         // sort

@@ -1,3 +1,4 @@
+use chrono::Utc;
 use crate::error::TodoError;
 use crate::task::{Priority, Status, Task};
 
@@ -135,6 +136,17 @@ impl Output {
             line.push(' ');
             line.push_str(&tags);
         }
+
+        // Show overdue indicator for pending tasks past their due date
+        if task.status == Status::Pending {
+            if let Some(due) = task.due {
+                if due < Utc::now() {
+                    let days = (Utc::now() - due).num_days();
+                    line.push_str(&format!(" \u{26a0}\u{fe0f} {} days overdue", days));
+                }
+            }
+        }
+
         line
     }
 }
