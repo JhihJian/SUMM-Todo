@@ -3,28 +3,29 @@ use uuid::Uuid;
 
 use crate::error::TodoError;
 
-/// Generate a short unique ID derived from UUID v7.
+/// Generate an 8-character unique ID derived from UUID v7.
 ///
-/// Tries progressively longer prefixes of the hex-encoded UUID
-/// until one is found that does not collide with existing task IDs.
+/// Always returns 8 characters for consistency.
+/// Uses the last 8 characters of the UUID to ensure randomness.
+/// Collision at 8 chars is virtually impossible (1 in 4 billion).
 pub fn generate_id(conn: &Connection) -> Result<String, TodoError> {
-    let uuid = Uuid::now_v7();
-    let hex = uuid.simple().to_string(); // 32-char hex
+    loop {
+        let uuid = Uuid::now_v7();
+        let hex = uuid.simple().to_string(); // 32-char hex
+        let id = &hex[24..]; // Last 8 characters for better randomness
 
-    for &len in &[4, 6, 8] {
-        let candidate = &hex[..len];
+        // Check for collision (extremely rare)
         let exists: bool = conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM tasks WHERE id = ?1)",
-            params![candidate],
+            params![id],
             |row| row.get(0),
         )?;
-        if !exists {
-            return Ok(candidate.to_string());
-        }
-    }
 
-    // Fallback: full 32-char hex (collision at 8 chars is virtually impossible)
-    Ok(hex)
+        if !exists {
+            return Ok(id.to_string());
+        }
+        // If collision (virtually impossible), loop and try next UUID
+    }
 }
 
 #[cfg(test)]
@@ -39,11 +40,10 @@ mod tests {
     }
 
     #[test]
-    fn generates_4_char_id_when_no_collision() {
+    fn generates_8_char_id() {
         let conn = setup_db();
         let id = generate_id(&conn).unwrap();
-        assert_eq!(id.len(), 4, "Expected 4-char ID, got '{}'", id);
-        // Must be valid lowercase hex
+        assert_eq!(id.len(), 8, "Expected 8-char ID, got '{}'", id);
         assert!(
             id.chars().all(|c| c.is_ascii_hexdigit()),
             "ID '{}' contains non-hex characters",
@@ -52,36 +52,19 @@ mod tests {
     }
 
     #[test]
-    fn generates_longer_id_on_collision() {
+    fn ids_are_unique() {
         let conn = setup_db();
 
-        let first_id = generate_id(&conn).unwrap();
-        assert_eq!(first_id.len(), 4);
-
-        // Insert the first ID so the next call's 4-char prefix will collide
-        // if it happens to match. To guarantee a collision we insert the
-        // 4-char prefix we're about to generate. Since UUID v7 is time-based,
-        // two calls in quick succession share the same timestamp prefix, but
-        // the random suffix differs. Instead, we force a collision by inserting
-        // the first ID into the DB and verifying the second ID is still valid.
-        conn.execute(
-            "INSERT INTO tasks (id, title) VALUES (?1, 'test')",
-            params![&first_id],
-        )
-        .unwrap();
-
-        let second_id = generate_id(&conn).unwrap();
-        assert_ne!(first_id, second_id, "IDs must be unique");
-        assert!(
-            second_id.chars().all(|c| c.is_ascii_hexdigit()),
-            "ID '{}' contains non-hex characters",
-            second_id
-        );
-        // Second ID is either 4 (no collision) or longer (collision on 4-char prefix)
-        assert!(
-            [4, 6, 8, 32].contains(&second_id.len()),
-            "Unexpected ID length: {}",
-            second_id.len()
-        );
+        let mut ids = std::collections::HashSet::new();
+        for i in 0..100 {
+            let id = generate_id(&conn).unwrap();
+            assert!(ids.insert(id.clone()), "Duplicate ID generated: {}", id);
+            // Insert into DB to enable collision detection for subsequent IDs
+            conn.execute(
+                "INSERT INTO tasks (id, title) VALUES (?1, 'test')",
+                params![&id],
+            )
+            .unwrap_or_else(|_| panic!("Failed to insert ID {} on iteration {}", id, i));
+        }
     }
 }
