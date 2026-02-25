@@ -24,6 +24,7 @@ fn add_creates_task_and_returns_json() {
         parent: None,
         due: None,
         creator: None,
+        description: None,
     };
     let result = commands::add::execute(&db, args, &out).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
@@ -44,6 +45,7 @@ fn next_claims_highest_priority_task() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -57,6 +59,7 @@ fn next_claims_highest_priority_task() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -81,6 +84,7 @@ fn done_completes_task() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -125,6 +129,7 @@ fn block_and_resume() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -172,6 +177,7 @@ fn cancel_from_pending() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -203,6 +209,7 @@ fn show_returns_full_task() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -227,6 +234,7 @@ fn list_filters_by_status() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -263,6 +271,7 @@ fn log_returns_done_tasks() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -316,6 +325,7 @@ fn stats_returns_counts() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -329,6 +339,7 @@ fn stats_returns_counts() {
             parent: None,
             due: None,
             creator: Some("agent".into()),
+            description: None,
         },
         &out,
     )
@@ -398,6 +409,7 @@ fn edit_updates_task_properties() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -412,6 +424,8 @@ fn edit_updates_task_properties() {
             priority: Some("high".into()),
             tag: vec!["-old".into(), "+new".into()],
             due: None,
+            description: None,
+            clear_content: false,
         },
         &out,
     )
@@ -436,6 +450,7 @@ fn edit_rejects_terminal_states() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -462,6 +477,8 @@ fn edit_rejects_terminal_states() {
             priority: None,
             tag: vec![],
             due: None,
+            description: None,
+            clear_content: false,
         },
         &out,
     );
@@ -519,6 +536,7 @@ fn undo_reverts_done_to_in_progress() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -563,6 +581,7 @@ fn abandon_reverts_in_progress_to_pending() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -596,6 +615,7 @@ fn search_finds_tasks_by_title() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -609,6 +629,7 @@ fn search_finds_tasks_by_title() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -642,6 +663,7 @@ fn search_with_tag_filter() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -655,6 +677,7 @@ fn search_with_tag_filter() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -690,6 +713,7 @@ fn search_with_status_filter() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -715,6 +739,7 @@ fn search_with_status_filter() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -749,6 +774,7 @@ fn search_returns_empty_for_no_match() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -781,6 +807,7 @@ fn export_outputs_json() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -813,6 +840,7 @@ fn export_to_file() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -851,6 +879,7 @@ fn export_with_status_filter() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -865,6 +894,7 @@ fn export_with_status_filter() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -923,6 +953,7 @@ fn export_with_tag_filter() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
@@ -936,6 +967,7 @@ fn export_with_tag_filter() {
             parent: None,
             due: None,
             creator: None,
+            description: None,
         },
         &out,
     )
