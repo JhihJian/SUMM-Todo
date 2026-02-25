@@ -28,6 +28,13 @@ pub fn execute(db: &Database, args: EditArgs, output: &Output) -> Result<String,
         task.due = Some(crate::time_parse::parse_due(&due)?);
     }
 
+    // Handle content/description
+    if args.clear_content {
+        task.content = None;
+    } else if let Some(content) = args.description {
+        task.content = Some(content);
+    }
+
     // Handle tag additions/removals
     for tag in args.tag {
         if let Some(remove_tag) = tag.strip_prefix('-') {
