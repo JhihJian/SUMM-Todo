@@ -147,6 +147,13 @@ impl Output {
             }
         }
 
+        // Show blocked reason for blocked tasks
+        if task.status == Status::Blocked {
+            if let Some(ref reason) = task.blocked_reason {
+                line.push_str(&format!("\n  \u{26a0} {}", reason));
+            }
+        }
+
         line
     }
 }
