@@ -49,7 +49,7 @@ pub struct AddArgs {
     pub title: String,
 
     /// priority level
-    #[argh(option, short = 'r')]
+    #[argh(option, short = 'P')]
     pub pri: Option<String>,
 
     /// tag (repeatable)
@@ -78,7 +78,7 @@ pub struct NextArgs {
     pub tag: Option<String>,
 
     /// filter by priority
-    #[argh(option, short = 'r')]
+    #[argh(option, short = 'P')]
     pub pri: Option<String>,
 }
 
@@ -108,7 +108,7 @@ pub struct DoneArgs {
     pub result: String,
 
     /// artifact reference (repeatable)
-    #[argh(option)]
+    #[argh(option, short = 'a')]
     pub artifact: Vec<String>,
 
     /// execution log entry
@@ -125,7 +125,7 @@ pub struct BlockArgs {
     pub id: String,
 
     /// reason for blocking
-    #[argh(option)]
+    #[argh(option, short = 'r')]
     pub reason: String,
 }
 
@@ -164,7 +164,7 @@ pub struct ListArgs {
     pub tag: Vec<String>,
 
     /// filter by priority
-    #[argh(option, short = 'r')]
+    #[argh(option, short = 'P')]
     pub pri: Option<String>,
 
     /// filter by parent task id
