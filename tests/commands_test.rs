@@ -311,7 +311,7 @@ fn stats_returns_counts() {
         &db,
         AddArgs {
             title: "A".into(),
-            pri: None,
+            pri: Some("high".into()),
             tag: vec!["x".into()],
             parent: None,
             due: None,
@@ -324,7 +324,7 @@ fn stats_returns_counts() {
         &db,
         AddArgs {
             title: "B".into(),
-            pri: None,
+            pri: Some("medium".into()),
             tag: vec!["x".into()],
             parent: None,
             due: None,
@@ -337,8 +337,34 @@ fn stats_returns_counts() {
     let result =
         commands::stats::execute(&db, StatsArgs { since: None, tag: None }, &out).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+    // Check basic counts
     assert_eq!(parsed["total"], 2);
     assert!(parsed["by_status"]["pending"].as_i64().unwrap() >= 2);
+
+    // Check enhanced metrics
+    assert!(parsed["overdue"].is_i64());
+    assert!(parsed["completion_rate"].is_f64());
+
+    // Check by_priority structure
+    assert!(parsed["by_priority"]["high"]["total"].is_i64());
+    assert!(parsed["by_priority"]["high"]["done"].is_i64());
+    assert!(parsed["by_priority"]["medium"]["total"].is_i64());
+    assert!(parsed["by_priority"]["medium"]["done"].is_i64());
+    assert!(parsed["by_priority"]["low"]["total"].is_i64());
+    assert!(parsed["by_priority"]["low"]["done"].is_i64());
+
+    // Verify priority counts
+    assert_eq!(parsed["by_priority"]["high"]["total"], 1);
+    assert_eq!(parsed["by_priority"]["medium"]["total"], 1);
+    assert_eq!(parsed["by_priority"]["low"]["total"], 0);
+
+    // Check by_status has all statuses
+    assert!(parsed["by_status"]["pending"].is_i64());
+    assert!(parsed["by_status"]["in_progress"].is_i64());
+    assert!(parsed["by_status"]["blocked"].is_i64());
+    assert!(parsed["by_status"]["done"].is_i64());
+    assert!(parsed["by_status"]["cancelled"].is_i64());
 }
 
 #[test]
