@@ -29,6 +29,7 @@ pub fn execute(db: &Database, args: AddArgs, output: &Output) -> Result<String, 
     task.tags = args.tag;
     task.parent_id = args.parent;
     task.due = due;
+    task.content = args.description;
 
     db.insert_task(&task)?;
     Ok(output.task(&task))
