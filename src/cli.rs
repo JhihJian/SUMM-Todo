@@ -35,6 +35,8 @@ pub enum Command {
     Stats(StatsArgs),
     Import(ImportArgs),
     Edit(EditArgs),
+    Undo(UndoArgs),
+    Abandon(AbandonArgs),
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
@@ -256,4 +258,22 @@ pub struct EditArgs {
     /// new due date
     #[argh(option)]
     pub due: Option<String>,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "undo")]
+/// Undo a completed task (done -> in_progress)
+pub struct UndoArgs {
+    /// task id
+    #[argh(positional)]
+    pub id: String,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "abandon")]
+/// Release a task back to pending (in_progress -> pending)
+pub struct AbandonArgs {
+    /// task id
+    #[argh(positional)]
+    pub id: String,
 }

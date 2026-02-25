@@ -228,6 +228,18 @@ impl Task {
                 self.blocked_reason = None;
                 self.finished_at = Some(Utc::now());
             }
+            // done -> in_progress (undo)
+            (Status::Done, Status::InProgress) => {
+                self.result = None;
+                self.artifacts = Vec::new();
+                self.log = None;
+                self.finished_at = None;
+            }
+            // in_progress -> pending (abandon)
+            (Status::InProgress, Status::Pending) => {
+                self.assignee = None;
+                self.started_at = None;
+            }
             // All other transitions are invalid
             _ => {
                 return Err(TodoError::InvalidTransition {
@@ -388,7 +400,7 @@ mod tests {
 
     #[test]
     fn terminal_states_reject_transitions() {
-        // Done rejects transitions
+        // Done -> Pending is invalid (must go through InProgress via undo)
         let mut t1 = Task::new("1", "Test");
         t1.transition(Status::InProgress, TransitionContext::default())
             .unwrap();
@@ -403,12 +415,13 @@ mod tests {
             .unwrap_err();
         assert!(matches!(err, TodoError::InvalidTransition { .. }));
 
-        let err = t1
-            .transition(Status::InProgress, TransitionContext::default())
-            .unwrap_err();
-        assert!(matches!(err, TodoError::InvalidTransition { .. }));
+        // Done -> InProgress is allowed (undo)
+        t1.transition(Status::InProgress, TransitionContext::default())
+            .unwrap();
+        assert_eq!(t1.status, Status::InProgress);
+        assert!(t1.result.is_none());
 
-        // Cancelled rejects transitions
+        // Cancelled rejects all transitions
         let mut t2 = Task::new("2", "Test");
         t2.transition(Status::Cancelled, TransitionContext::default())
             .unwrap();
@@ -443,5 +456,53 @@ mod tests {
         };
         let err = task.transition(Status::Done, ctx).unwrap_err();
         assert!(matches!(err, TodoError::InvalidTransition { .. }));
+    }
+
+    #[test]
+    fn undo_reverts_done_to_in_progress() {
+        let mut task = Task::new("1", "Test");
+        task.transition(Status::InProgress, TransitionContext::default())
+            .unwrap();
+        let ctx = TransitionContext {
+            result: Some("completed".into()),
+            artifacts: Some(vec!["file.txt".into()]),
+            log: Some("done".into()),
+            ..Default::default()
+        };
+        task.transition(Status::Done, ctx).unwrap();
+        assert_eq!(task.status, Status::Done);
+        assert!(task.result.is_some());
+        assert!(!task.artifacts.is_empty());
+        assert!(task.log.is_some());
+        assert!(task.finished_at.is_some());
+
+        // Undo
+        task.transition(Status::InProgress, TransitionContext::default())
+            .unwrap();
+        assert_eq!(task.status, Status::InProgress);
+        assert!(task.result.is_none());
+        assert!(task.artifacts.is_empty());
+        assert!(task.log.is_none());
+        assert!(task.finished_at.is_none());
+    }
+
+    #[test]
+    fn abandon_reverts_in_progress_to_pending() {
+        let mut task = Task::new("1", "Test");
+        let ctx = TransitionContext {
+            assignee: Some(Creator::Agent),
+            ..Default::default()
+        };
+        task.transition(Status::InProgress, ctx).unwrap();
+        assert_eq!(task.status, Status::InProgress);
+        assert!(task.assignee.is_some());
+        assert!(task.started_at.is_some());
+
+        // Abandon
+        task.transition(Status::Pending, TransitionContext::default())
+            .unwrap();
+        assert_eq!(task.status, Status::Pending);
+        assert!(task.assignee.is_none());
+        assert!(task.started_at.is_none());
     }
 }

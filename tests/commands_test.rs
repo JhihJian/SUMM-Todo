@@ -480,3 +480,80 @@ fn list_overdue_filters_correctly() {
     assert_eq!(parsed.as_array().unwrap().len(), 1);
     assert_eq!(parsed[0]["id"], "1");
 }
+
+#[test]
+fn undo_reverts_done_to_in_progress() {
+    let (db, out) = setup();
+    let add_result = commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Test".into(),
+            pri: None,
+            tag: vec![],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+    let id = extract_id(&add_result);
+    commands::start::execute(
+        &db,
+        StartArgs {
+            id: id.clone(),
+            assignee: None,
+        },
+        &out,
+    )
+    .unwrap();
+    commands::done::execute(
+        &db,
+        DoneArgs {
+            id: id.clone(),
+            result: "Done".into(),
+            artifact: vec![],
+            log: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    let result = commands::undo::execute(&db, UndoArgs { id: id.clone() }, &out).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(parsed["status"], "in_progress");
+    assert!(parsed["result"].is_null());
+}
+
+#[test]
+fn abandon_reverts_in_progress_to_pending() {
+    let (db, out) = setup();
+    let add_result = commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Test".into(),
+            pri: None,
+            tag: vec![],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+    let id = extract_id(&add_result);
+    commands::start::execute(
+        &db,
+        StartArgs {
+            id: id.clone(),
+            assignee: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    let result = commands::abandon::execute(&db, AbandonArgs { id: id.clone() }, &out).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(parsed["status"], "pending");
+    assert!(parsed["assignee"].is_null());
+}
