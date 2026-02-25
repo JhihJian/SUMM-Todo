@@ -356,3 +356,85 @@ fn import_creates_tasks_from_json() {
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     assert_eq!(parsed["imported"], 2);
 }
+
+#[test]
+fn edit_updates_task_properties() {
+    let (db, out) = setup();
+    let add_result = commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Original".into(),
+            pri: Some("low".into()),
+            tag: vec!["old".into()],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+    let id = extract_id(&add_result);
+
+    let result = commands::edit::execute(
+        &db,
+        EditArgs {
+            id: id.clone(),
+            title: Some("Updated".into()),
+            priority: Some("high".into()),
+            tag: vec!["-old".into(), "+new".into()],
+            due: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(parsed["title"], "Updated");
+    assert_eq!(parsed["priority"], "high");
+    assert!(parsed["tags"].as_array().unwrap().contains(&serde_json::json!("new")));
+    assert!(!parsed["tags"].as_array().unwrap().contains(&serde_json::json!("old")));
+}
+
+#[test]
+fn edit_rejects_terminal_states() {
+    let (db, out) = setup();
+    let add_result = commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Task".into(),
+            pri: None,
+            tag: vec![],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+    let id = extract_id(&add_result);
+
+    // Cancel the task
+    commands::cancel::execute(
+        &db,
+        CancelArgs {
+            id: id.clone(),
+            reason: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    // Try to edit - should fail
+    let result = commands::edit::execute(
+        &db,
+        EditArgs {
+            id: id.clone(),
+            title: Some("Updated".into()),
+            priority: None,
+            tag: vec![],
+            due: None,
+        },
+        &out,
+    );
+    assert!(result.is_err());
+}

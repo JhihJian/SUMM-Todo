@@ -2,6 +2,7 @@ pub mod add;
 pub mod block;
 pub mod cancel;
 pub mod done;
+pub mod edit;
 pub mod import;
 pub mod list;
 pub mod log;

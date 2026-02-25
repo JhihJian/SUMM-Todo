@@ -40,5 +40,6 @@ fn run(command: Command, output: &Output) -> Result<String, TodoError> {
         Command::Log(args) => commands::log::execute(&db, args, output),
         Command::Stats(args) => commands::stats::execute(&db, args, output),
         Command::Import(args) => commands::import::execute(&db, args, output),
+        Command::Edit(args) => commands::edit::execute(&db, args, output),
     }
 }

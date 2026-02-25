@@ -34,6 +34,7 @@ pub enum Command {
     Log(LogArgs),
     Stats(StatsArgs),
     Import(ImportArgs),
+    Edit(EditArgs),
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
@@ -226,4 +227,29 @@ pub struct ImportArgs {
     /// path to JSON file (use "-" for stdin)
     #[argh(option, short = 'f')]
     pub file: String,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "edit")]
+/// Edit task properties
+pub struct EditArgs {
+    /// task id
+    #[argh(positional)]
+    pub id: String,
+
+    /// new title
+    #[argh(option)]
+    pub title: Option<String>,
+
+    /// new priority
+    #[argh(option, short = 'P')]
+    pub priority: Option<String>,
+
+    /// add tag (prefix with +) or remove tag (prefix with -)
+    #[argh(option, short = 't')]
+    pub tag: Vec<String>,
+
+    /// new due date
+    #[argh(option)]
+    pub due: Option<String>,
 }
