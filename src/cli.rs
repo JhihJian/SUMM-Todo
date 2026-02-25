@@ -34,6 +34,7 @@ pub enum Command {
     Log(LogArgs),
     Stats(StatsArgs),
     Import(ImportArgs),
+    Export(ExportArgs),
     Edit(EditArgs),
     Undo(UndoArgs),
     Abandon(AbandonArgs),
@@ -234,6 +235,23 @@ pub struct ImportArgs {
     /// path to JSON file (use "-" for stdin)
     #[argh(option, short = 'f')]
     pub file: String,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "export")]
+/// Export tasks to JSON file
+pub struct ExportArgs {
+    /// output file path (default: stdout)
+    #[argh(option, short = 'f')]
+    pub file: Option<String>,
+
+    /// filter by status (repeatable)
+    #[argh(option, short = 's')]
+    pub status: Vec<String>,
+
+    /// filter by tag (repeatable)
+    #[argh(option, short = 't')]
+    pub tag: Vec<String>,
 }
 
 #[derive(FromArgs, PartialEq, Debug)]

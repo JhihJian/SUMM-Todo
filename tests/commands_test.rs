@@ -742,3 +742,193 @@ fn search_returns_empty_for_no_match() {
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     assert_eq!(parsed.as_array().unwrap().len(), 0);
 }
+
+#[test]
+fn export_outputs_json() {
+    let (db, out) = setup();
+    commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Task 1".into(),
+            pri: None,
+            tag: vec![],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    let result = commands::export::execute(
+        &db,
+        ExportArgs {
+            file: None,
+            status: vec![],
+            tag: vec![],
+        },
+        &out,
+    )
+    .unwrap();
+
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert!(parsed.as_array().unwrap().len() >= 1);
+}
+
+#[test]
+fn export_to_file() {
+    let (db, out) = setup();
+    commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Task to export".into(),
+            pri: None,
+            tag: vec![],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    let tmpfile = std::env::temp_dir().join("test_export.json");
+    let result = commands::export::execute(
+        &db,
+        ExportArgs {
+            file: Some(tmpfile.to_str().unwrap().into()),
+            status: vec![],
+            tag: vec![],
+        },
+        &out,
+    )
+    .unwrap();
+
+    assert!(result.contains("Exported"));
+    assert!(result.contains("tasks to"));
+
+    // Verify file contents
+    let contents = std::fs::read_to_string(&tmpfile).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&contents).unwrap();
+    assert!(parsed.as_array().unwrap().len() >= 1);
+}
+
+#[test]
+fn export_with_status_filter() {
+    let (db, out) = setup();
+    commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Pending task".into(),
+            pri: None,
+            tag: vec![],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    let add_result = commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Task to complete".into(),
+            pri: None,
+            tag: vec![],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+    let id = extract_id(&add_result);
+
+    // Start and complete the task
+    commands::start::execute(
+        &db,
+        StartArgs {
+            id: id.clone(),
+            assignee: None,
+        },
+        &out,
+    )
+    .unwrap();
+    commands::done::execute(
+        &db,
+        DoneArgs {
+            id: id.clone(),
+            result: "Done".into(),
+            artifact: vec![],
+            log: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    // Export only done tasks
+    let result = commands::export::execute(
+        &db,
+        ExportArgs {
+            file: None,
+            status: vec!["done".into()],
+            tag: vec![],
+        },
+        &out,
+    )
+    .unwrap();
+
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let tasks = parsed.as_array().unwrap();
+    assert_eq!(tasks.len(), 1);
+    assert_eq!(tasks[0]["status"], "done");
+}
+
+#[test]
+fn export_with_tag_filter() {
+    let (db, out) = setup();
+    commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Backend task".into(),
+            pri: None,
+            tag: vec!["backend".into()],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+    commands::add::execute(
+        &db,
+        AddArgs {
+            title: "Frontend task".into(),
+            pri: None,
+            tag: vec!["frontend".into()],
+            parent: None,
+            due: None,
+            creator: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    // Export only backend tasks
+    let result = commands::export::execute(
+        &db,
+        ExportArgs {
+            file: None,
+            status: vec![],
+            tag: vec!["backend".into()],
+        },
+        &out,
+    )
+    .unwrap();
+
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let tasks = parsed.as_array().unwrap();
+    assert_eq!(tasks.len(), 1);
+    assert_eq!(tasks[0]["title"], "Backend task");
+}
