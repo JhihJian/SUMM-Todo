@@ -1,4 +1,5 @@
 use chrono::{DateTime, Duration, NaiveDate, Utc, Datelike};
+use chrono_english::{parse_date_string, Dialect};
 
 use crate::error::TodoError;
 
@@ -6,23 +7,22 @@ use crate::error::TodoError;
 /// - Absolute: "YYYY-MM-DD" -> end of that day (23:59:59 UTC)
 /// - Relative days: "3d" -> now + 3 days
 /// - Relative weeks: "2w" -> now + 2 weeks (14 days)
+/// - Natural language: "tomorrow", "in 3 days", "next week", etc.
 pub fn parse_due(input: &str) -> Result<DateTime<Utc>, TodoError> {
     let input = input.trim();
 
     // Try relative days: e.g. "3d"
     if let Some(num_str) = input.strip_suffix('d') {
-        let days: i64 = num_str
-            .parse()
-            .map_err(|_| TodoError::ParseError(format!("Invalid relative days: {}", input)))?;
-        return Ok(Utc::now() + Duration::days(days));
+        if let Ok(days) = num_str.parse::<i64>() {
+            return Ok(Utc::now() + Duration::days(days));
+        }
     }
 
     // Try relative weeks: e.g. "2w"
     if let Some(num_str) = input.strip_suffix('w') {
-        let weeks: i64 = num_str
-            .parse()
-            .map_err(|_| TodoError::ParseError(format!("Invalid relative weeks: {}", input)))?;
-        return Ok(Utc::now() + Duration::weeks(weeks));
+        if let Ok(weeks) = num_str.parse::<i64>() {
+            return Ok(Utc::now() + Duration::weeks(weeks));
+        }
     }
 
     // Try absolute date: "YYYY-MM-DD"
@@ -33,16 +33,17 @@ pub fn parse_due(input: &str) -> Result<DateTime<Utc>, TodoError> {
         return Ok(end_of_day.and_utc());
     }
 
-    Err(TodoError::ParseError(format!(
-        "Unrecognized due date format: '{}'. Use YYYY-MM-DD, Nd, or Nw.",
-        input
-    )))
+    // Try natural language parsing
+    parse_date_string(input, Utc::now(), Dialect::Uk)
+        .map(|dt| dt.with_timezone(&Utc))
+        .map_err(|e| TodoError::ParseError(format!("Unrecognized due date format '{}': {}", input, e)))
 }
 
 /// Parses --since filter input. Accepts:
 /// - "today" -> start of today (00:00:00 UTC)
 /// - Relative days: "7d" -> now - 7 days
 /// - Absolute: "YYYY-MM-DD" -> start of that day (00:00:00 UTC)
+/// - Natural language: "yesterday", "last week", etc.
 pub fn parse_since(input: &str) -> Result<DateTime<Utc>, TodoError> {
     let input = input.trim();
 
@@ -56,10 +57,9 @@ pub fn parse_since(input: &str) -> Result<DateTime<Utc>, TodoError> {
 
     // Try relative days: e.g. "7d" -> now - 7 days
     if let Some(num_str) = input.strip_suffix('d') {
-        let days: i64 = num_str
-            .parse()
-            .map_err(|_| TodoError::ParseError(format!("Invalid relative days: {}", input)))?;
-        return Ok(Utc::now() - Duration::days(days));
+        if let Ok(days) = num_str.parse::<i64>() {
+            return Ok(Utc::now() - Duration::days(days));
+        }
     }
 
     // Try absolute date: "YYYY-MM-DD"
@@ -70,10 +70,10 @@ pub fn parse_since(input: &str) -> Result<DateTime<Utc>, TodoError> {
         return Ok(start_of_day.and_utc());
     }
 
-    Err(TodoError::ParseError(format!(
-        "Unrecognized since format: '{}'. Use 'today', Nd, or YYYY-MM-DD.",
-        input
-    )))
+    // Try natural language parsing
+    parse_date_string(input, Utc::now(), Dialect::Uk)
+        .map(|dt| dt.with_timezone(&Utc))
+        .map_err(|e| TodoError::ParseError(format!("Unrecognized since format '{}': {}", input, e)))
 }
 
 #[cfg(test)]
@@ -128,5 +128,47 @@ mod tests {
     fn parse_invalid_returns_error() {
         assert!(parse_due("xyz").is_err());
         assert!(parse_since("xyz").is_err());
+    }
+
+    #[test]
+    fn parses_tomorrow() {
+        let dt = parse_due("tomorrow").unwrap();
+        let now = Utc::now();
+        // tomorrow should be in the future
+        assert!(dt > now);
+        // and within 2 days
+        let diff = (dt - now).num_days();
+        assert!((0..=2).contains(&diff));
+    }
+
+    #[test]
+    fn parses_3_days() {
+        let dt = parse_due("3 days").unwrap();
+        let now = Utc::now();
+        let diff = (dt - now).num_days();
+        // Should be approximately 3 days (allow 2-4 for timing)
+        assert!((2..=4).contains(&diff));
+    }
+
+    #[test]
+    fn parses_yesterday() {
+        let dt = parse_since("yesterday").unwrap();
+        let now = Utc::now();
+        // yesterday should be in the past
+        assert!(dt < now);
+        // and within 2 days ago
+        let diff = (now - dt).num_days();
+        assert!((0..=2).contains(&diff));
+    }
+
+    #[test]
+    fn parses_1_week() {
+        let dt = parse_due("1 week").unwrap();
+        let now = Utc::now();
+        // 1 week should be in the future
+        assert!(dt > now);
+        // and within 10 days (allowing for timing)
+        let diff = (dt - now).num_days();
+        assert!((5..=10).contains(&diff));
     }
 }
