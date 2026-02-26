@@ -28,6 +28,9 @@ pub enum TodoError {
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("Project has {0} tasks. Delete or move them first.")]
+    ProjectHasTasks(i64),
 }
 
 impl TodoError {
@@ -42,6 +45,7 @@ impl TodoError {
             TodoError::InvalidInput(_) => "E_INVALID_INPUT",
             TodoError::ParseError(_) => "E_PARSE_ERROR",
             TodoError::Io(_) => "E_IO",
+            TodoError::ProjectHasTasks(_) => "E_PROJECT_HAS_TASKS",
         }
     }
 

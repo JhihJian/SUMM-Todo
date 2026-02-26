@@ -5,7 +5,21 @@ use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection, Row};
 
 use crate::error::TodoError;
-use crate::task::{Creator, Priority, Status, Task};
+use crate::task::{Creator, Priority, Project, Status, Task};
+
+// ---------------------------------------------------------------------------
+// ProjectStats
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Default)]
+pub struct ProjectStats {
+    pub total: i64,
+    pub pending: i64,
+    pub in_progress: i64,
+    pub blocked: i64,
+    pub done: i64,
+    pub cancelled: i64,
+}
 
 // ---------------------------------------------------------------------------
 // TaskFilter
@@ -22,6 +36,7 @@ pub struct TaskFilter {
     pub limit: Option<i64>,
     pub sort: Option<String>,
     pub overdue: bool,
+    pub project_id: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -199,6 +214,146 @@ impl Database {
         Ok(())
     }
 
+    // -----------------------------------------------------------------------
+    // Project operations
+    // -----------------------------------------------------------------------
+
+    /// Insert a new project.
+    pub fn insert_project(&self, project: &Project) -> Result<(), TodoError> {
+        self.conn.execute(
+            "INSERT INTO projects (id, name, description, created_at)
+             VALUES (?1, ?2, ?3, ?4)",
+            params![
+                project.id,
+                project.name,
+                project.description,
+                project.created_at.to_rfc3339(),
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Fetch a project by ID.
+    pub fn get_project(&self, id: &str) -> Result<Option<Project>, TodoError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, description, created_at FROM projects WHERE id = ?1",
+        )?;
+        let mut rows = stmt.query(params![id])?;
+        match rows.next()? {
+            Some(row) => Ok(Some(row_to_project(row)?)),
+            None => Ok(None),
+        }
+    }
+
+    /// Fetch a project by name.
+    pub fn get_project_by_name(&self, name: &str) -> Result<Option<Project>, TodoError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, description, created_at FROM projects WHERE name = ?1",
+        )?;
+        let mut rows = stmt.query(params![name])?;
+        match rows.next()? {
+            Some(row) => Ok(Some(row_to_project(row)?)),
+            None => Ok(None),
+        }
+    }
+
+    /// List all projects.
+    pub fn list_projects(&self) -> Result<Vec<Project>, TodoError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, description, created_at FROM projects ORDER BY name ASC",
+        )?;
+        let mut rows = stmt.query([])?;
+        let mut projects = Vec::new();
+        while let Some(row) = rows.next()? {
+            projects.push(row_to_project(row)?);
+        }
+        Ok(projects)
+    }
+
+    /// Update a project.
+    pub fn update_project(&self, project: &Project) -> Result<(), TodoError> {
+        self.conn.execute(
+            "UPDATE projects SET name = ?2, description = ?3 WHERE id = ?1",
+            params![project.id, project.name, project.description,],
+        )?;
+        Ok(())
+    }
+
+    /// Delete a project. Returns error if project has tasks.
+    pub fn delete_project(&self, id: &str) -> Result<(), TodoError> {
+        // Check if project has tasks
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM tasks WHERE project_id = ?1",
+            params![id],
+            |row| row.get(0),
+        )?;
+        if count > 0 {
+            return Err(TodoError::ProjectHasTasks(count));
+        }
+        self.conn.execute("DELETE FROM projects WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
+    /// Get task statistics for a project.
+    pub fn get_project_stats(&self, project_id: &str) -> Result<ProjectStats, TodoError> {
+        let mut stats = ProjectStats::default();
+
+        stats.total = self.conn.query_row(
+            "SELECT COUNT(*) FROM tasks WHERE project_id = ?1",
+            params![project_id],
+            |row| row.get(0),
+        )?;
+
+        stats.pending = self.conn.query_row(
+            "SELECT COUNT(*) FROM tasks WHERE project_id = ?1 AND status = 'pending'",
+            params![project_id],
+            |row| row.get(0),
+        )?;
+
+        stats.in_progress = self.conn.query_row(
+            "SELECT COUNT(*) FROM tasks WHERE project_id = ?1 AND status = 'in_progress'",
+            params![project_id],
+            |row| row.get(0),
+        )?;
+
+        stats.blocked = self.conn.query_row(
+            "SELECT COUNT(*) FROM tasks WHERE project_id = ?1 AND status = 'blocked'",
+            params![project_id],
+            |row| row.get(0),
+        )?;
+
+        stats.done = self.conn.query_row(
+            "SELECT COUNT(*) FROM tasks WHERE project_id = ?1 AND status = 'done'",
+            params![project_id],
+            |row| row.get(0),
+        )?;
+
+        stats.cancelled = self.conn.query_row(
+            "SELECT COUNT(*) FROM tasks WHERE project_id = ?1 AND status = 'cancelled'",
+            params![project_id],
+            |row| row.get(0),
+        )?;
+
+        Ok(stats)
+    }
+
+    /// Get recent tasks for a project.
+    pub fn get_project_recent_tasks(&self, project_id: &str, limit: i64) -> Result<Vec<Task>, TodoError> {
+        let filter = TaskFilter {
+            status: None,
+            tags: None,
+            priority: None,
+            parent_id: None,
+            creator: None,
+            since: None,
+            limit: Some(limit),
+            sort: Some("created_at DESC".into()),
+            overdue: false,
+            project_id: Some(project_id.to_string()),
+        };
+        self.list_tasks(&filter)
+    }
+
     /// List tasks with optional filters.
     pub fn list_tasks(&self, filter: &TaskFilter) -> Result<Vec<Task>, TodoError> {
         let mut conditions: Vec<String> = vec!["1=1".into()];
@@ -263,6 +418,13 @@ impl Database {
             conditions.push(format!("due IS NOT NULL AND due < ?{}", param_idx));
             param_idx += 1;
             param_values.push(Box::new(Utc::now().to_rfc3339()));
+        }
+
+        // project_id
+        if let Some(ref project_id) = filter.project_id {
+            conditions.push(format!("project_id = ?{}", param_idx));
+            param_idx += 1;
+            param_values.push(Box::new(project_id.clone()));
         }
 
         // sort
@@ -408,6 +570,13 @@ impl Database {
             param_values.push(Box::new(Utc::now().to_rfc3339()));
         }
 
+        // project_id
+        if let Some(ref project_id) = filter.project_id {
+            conditions.push(format!("project_id = ?{}", param_idx));
+            param_idx += 1;
+            param_values.push(Box::new(project_id.clone()));
+        }
+
         // sort
         let order = filter.sort.clone().unwrap_or_else(|| {
             "CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 END ASC, created_at ASC".into()
@@ -496,6 +665,18 @@ fn parse_optional_datetime(
             Ok(Some(dt.with_timezone(&Utc)))
         }
     }
+}
+
+fn row_to_project(row: &Row<'_>) -> Result<Project, TodoError> {
+    let created_at_str: String = row.get(3)?;
+    Ok(Project {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        description: row.get(2)?,
+        created_at: DateTime::parse_from_rfc3339(&created_at_str)
+            .map_err(|e| TodoError::ParseError(e.to_string()))?
+            .with_timezone(&Utc),
+    })
 }
 
 // ---------------------------------------------------------------------------
