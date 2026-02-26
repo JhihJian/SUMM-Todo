@@ -844,4 +844,66 @@ mod tests {
         let next = db.get_next_task(None, None).unwrap();
         assert!(next.is_none());
     }
+
+    #[test]
+    fn insert_and_get_project() {
+        let db = test_db();
+        let project = Project::new("proj1", "Test Project");
+
+        db.insert_project(&project).unwrap();
+
+        let fetched = db.get_project("proj1").unwrap().expect("project should exist");
+        assert_eq!(fetched.id, "proj1");
+        assert_eq!(fetched.name, "Test Project");
+    }
+
+    #[test]
+    fn get_project_by_name() {
+        let db = test_db();
+        let project = Project::new("p1", "My Project");
+        db.insert_project(&project).unwrap();
+
+        let fetched = db.get_project_by_name("My Project").unwrap().expect("should exist");
+        assert_eq!(fetched.id, "p1");
+    }
+
+    #[test]
+    fn delete_project_with_tasks_fails() {
+        let db = test_db();
+
+        let project = Project::new("p1", "Test");
+        db.insert_project(&project).unwrap();
+
+        let mut task = Task::new("t1", "Task");
+        task.project_id = Some("p1".to_string());
+        db.insert_task(&task).unwrap();
+
+        let result = db.delete_project("p1");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn project_stats() {
+        let db = test_db();
+
+        let project = Project::new("p1", "Test");
+        db.insert_project(&project).unwrap();
+
+        let mut t1 = Task::new("t1", "Task 1");
+        t1.project_id = Some("p1".to_string());
+        t1.status = Status::Pending;
+        db.insert_task(&t1).unwrap();
+
+        let mut t2 = Task::new("t2", "Task 2");
+        t2.project_id = Some("p1".to_string());
+        t2.status = Status::Done;
+        t2.result = Some("done".into());
+        t2.finished_at = Some(Utc::now());
+        db.insert_task(&t2).unwrap();
+
+        let stats = db.get_project_stats("p1").unwrap();
+        assert_eq!(stats.total, 2);
+        assert_eq!(stats.pending, 1);
+        assert_eq!(stats.done, 1);
+    }
 }
