@@ -62,15 +62,19 @@ sudo cp target/release/todo /usr/local/bin/
 ## Quick Start
 
 ```bash
-# Create tasks
-todo add "Implement JWT auth" -r high -t backend
-todo add "Update README" -t docs
+# Create a project
+todo project add "my-app" -d "My Application"
+
+# Create tasks (with or without project)
+todo add "my-app: Implement JWT auth" -r high -t backend
+todo add "my-app: Update README" -t docs
+todo add "Standalone task"
 
 # List tasks (TOON format by default - token-efficient for LLMs)
 todo list
 
-# JSON output (for backwards compatibility)
-todo --json list
+# Filter by project
+todo list -p my-app
 
 # Pretty output for humans
 todo -p list
@@ -98,6 +102,34 @@ todo done <id> -m "Implemented JWT auth with RS256"
 | `log` | View execution log |
 | `stats` | Show task statistics |
 | `import` | Bulk import from JSON |
+| `project` | Manage projects (add, edit, list, show, delete) |
+
+## Projects
+
+Organize tasks into projects:
+
+```bash
+# Create a project
+todo project add "web-app" -d "Web application"
+
+# List all projects
+todo project list
+
+# Show project details with statistics
+todo project show web-app
+
+# Edit project
+todo project edit web-app -n "my-web-app" -d "Updated description"
+
+# Add task to project
+todo add "web-app: Setup database"
+
+# Filter tasks by project
+todo list -p web-app
+
+# Delete project (must have no tasks)
+todo project delete web-app
+```
 
 ## Task States
 
@@ -156,6 +188,7 @@ See [docs/agent-integration.md](docs/agent-integration.md) for integrating with 
 
 ## Documentation
 
+- [v0.3.0 Release Notes](docs/v0.3.0-release.md) - Project support
 - [v0.2.0 Release Notes](docs/v0.2.0-release.md) - TOON output format
 - [v0.1.0 Release Notes](docs/v0.1.0-release.md) - Initial release features
 - [Agent Integration Guide](docs/agent-integration.md) - For AI agents
