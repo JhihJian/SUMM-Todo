@@ -7,7 +7,12 @@ use crate::time_parse::parse_since;
 
 pub fn execute(db: &Database, args: ListArgs, output: &Output) -> Result<String, TodoError> {
     let status = if args.status.is_empty() {
-        None
+        // Default: show only active tasks (exclude done and cancelled)
+        if args.all {
+            None
+        } else {
+            Some(vec![Status::Pending, Status::InProgress, Status::Blocked])
+        }
     } else {
         Some(
             args.status

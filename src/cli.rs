@@ -191,6 +191,10 @@ pub struct ListArgs {
     /// show only overdue tasks
     #[argh(switch)]
     pub overdue: bool,
+
+    /// show all tasks including done and cancelled
+    #[argh(switch)]
+    pub all: bool,
 }
 
 #[derive(FromArgs, PartialEq, Debug)]

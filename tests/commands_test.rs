@@ -251,6 +251,7 @@ fn list_filters_by_status() {
             since: None,
             limit: None,
             overdue: false,
+            all: false,
         },
         &out,
     )
@@ -514,6 +515,7 @@ fn list_overdue_filters_correctly() {
             since: None,
             limit: None,
             overdue: true,
+            all: false,
         },
         &out,
     )
