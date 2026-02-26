@@ -10,6 +10,18 @@ A local-first CLI tool for Human-Agent task coordination. Both humans and AI age
 curl -sSL https://raw.githubusercontent.com/JhihJian/SUMM-Todo/main/install.sh | bash
 ```
 
+### Update (Linux/macOS)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/JhihJian/SUMM-Todo/main/update.sh | bash
+```
+
+Or update to a specific version:
+
+```bash
+TODO_VERSION=v0.2.0 bash update.sh
+```
+
 ### Download Binary
 
 Download from [Releases](https://github.com/JhihJian/SUMM-Todo/releases) for your platform:
