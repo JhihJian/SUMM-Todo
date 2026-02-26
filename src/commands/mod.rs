@@ -9,6 +9,7 @@ pub mod import;
 pub mod list;
 pub mod log;
 pub mod next;
+pub mod project;
 pub mod resume;
 pub mod search;
 pub mod show;

@@ -39,6 +39,7 @@ pub enum Command {
     Undo(UndoArgs),
     Abandon(AbandonArgs),
     Search(SearchArgs),
+    Project(ProjectArgs),
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
@@ -332,4 +333,79 @@ pub struct SearchArgs {
     /// use regex matching
     #[argh(switch)]
     pub regex: bool,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "project")]
+/// Manage projects
+pub struct ProjectArgs {
+    #[argh(subcommand)]
+    pub command: ProjectCommand,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand)]
+pub enum ProjectCommand {
+    ProjectAdd(ProjectAddArgs),
+    ProjectEdit(ProjectEditArgs),
+    ProjectList(ProjectListArgs),
+    ProjectShow(ProjectShowArgs),
+    ProjectDelete(ProjectDeleteArgs),
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "add")]
+/// Create a new project
+pub struct ProjectAddArgs {
+    /// project name
+    #[argh(positional)]
+    pub name: String,
+
+    /// project description
+    #[argh(option, short = 'd')]
+    pub description: Option<String>,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "edit")]
+/// Edit project properties
+pub struct ProjectEditArgs {
+    /// project name
+    #[argh(positional)]
+    pub name: String,
+
+    /// new project name
+    #[argh(option, short = 'n')]
+    pub new_name: Option<String>,
+
+    /// new description
+    #[argh(option, short = 'd')]
+    pub description: Option<String>,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "list")]
+/// List all projects
+pub struct ProjectListArgs {}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "show")]
+/// Show project details
+pub struct ProjectShowArgs {
+    /// project name
+    #[argh(positional)]
+    pub name: String,
+
+    /// number of recent tasks to show
+    #[argh(option, short = 'n', default = "5")]
+    pub limit: i64,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "delete")]
+/// Delete a project
+pub struct ProjectDeleteArgs {
+    /// project name
+    #[argh(positional)]
+    pub name: String,
 }

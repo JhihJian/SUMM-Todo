@@ -1,6 +1,7 @@
 use chrono::Utc;
+use crate::db::ProjectStats;
 use crate::error::TodoError;
-use crate::task::{Priority, Status, Task};
+use crate::task::{Priority, Project, Status, Task};
 
 /// Output format mode
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -167,6 +168,129 @@ impl Output {
         }
 
         line
+    }
+
+    // Project output methods (implemented in Task 4)
+    // These are stubs that return basic output for now
+
+    pub fn project(&self, project: &Project) -> String {
+        match self.mode {
+            OutputMode::Toon => toon_format::encode_default(project).unwrap_or_else(|e| {
+                format!("error: failed to encode project to TOON: {}", e)
+            }),
+            OutputMode::Json => {
+                serde_json::to_string_pretty(project).expect("project serialization should not fail")
+            }
+            OutputMode::Pretty => {
+                let mut out = format!("Project: {}\n", project.name);
+                if let Some(ref desc) = project.description {
+                    out.push_str(&format!("Description: {}\n", desc));
+                }
+                out.push_str(&format!("ID: {}\n", project.id));
+                out
+            }
+        }
+    }
+
+    pub fn project_list_item(&self, project: &Project, stats: &ProjectStats) -> String {
+        match self.mode {
+            OutputMode::Toon => {
+                let data = serde_json::json!({
+                    "name": project.name,
+                    "id": project.id,
+                    "total": stats.total,
+                    "pending": stats.pending,
+                    "in_progress": stats.in_progress,
+                    "done": stats.done,
+                });
+                toon_format::encode_default(&data).unwrap_or_else(|e| {
+                    format!("error: failed to encode project list item to TOON: {}", e)
+                })
+            }
+            OutputMode::Json => {
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "name": project.name,
+                    "id": project.id,
+                    "stats": stats,
+                })).expect("project list item serialization should not fail")
+            }
+            OutputMode::Pretty => {
+                format!(
+                    "Project: {} [{}]\n  Tasks: {} total, {} pending, {} in progress, {} done",
+                    project.name,
+                    project.id,
+                    stats.total,
+                    stats.pending,
+                    stats.in_progress,
+                    stats.done
+                )
+            }
+        }
+    }
+
+    pub fn project_detail(&self, project: &Project, stats: &ProjectStats, recent_tasks: &[Task]) -> String {
+        match self.mode {
+            OutputMode::Toon => {
+                let data = serde_json::json!({
+                    "project": project,
+                    "stats": stats,
+                    "recent_tasks": recent_tasks,
+                });
+                toon_format::encode_default(&data).unwrap_or_else(|e| {
+                    format!("error: failed to encode project detail to TOON: {}", e)
+                })
+            }
+            OutputMode::Json => {
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "project": project,
+                    "stats": stats,
+                    "recent_tasks": recent_tasks,
+                })).expect("project detail serialization should not fail")
+            }
+            OutputMode::Pretty => {
+                let mut out = format!("Project: {}\n", project.name);
+                if let Some(ref desc) = project.description {
+                    out.push_str(&format!("Description: {}\n", desc));
+                }
+                out.push_str(&format!("ID: {}\n\n", project.id));
+                out.push_str(&format!(
+                    "Stats: {} total, {} pending, {} in progress, {} blocked, {} done, {} cancelled\n\n",
+                    stats.total, stats.pending, stats.in_progress, stats.blocked, stats.done, stats.cancelled
+                ));
+                if !recent_tasks.is_empty() {
+                    out.push_str("Recent tasks:\n");
+                    for task in recent_tasks {
+                        out.push_str(&format!("  {} [{}] {}\n", task.id, task.status, task.title));
+                    }
+                }
+                out
+            }
+        }
+    }
+
+    pub fn project_deleted(&self, project: &Project) -> String {
+        match self.mode {
+            OutputMode::Toon => {
+                let data = serde_json::json!({
+                    "deleted": true,
+                    "name": project.name,
+                    "id": project.id,
+                });
+                toon_format::encode_default(&data).unwrap_or_else(|e| {
+                    format!("error: failed to encode project deleted to TOON: {}", e)
+                })
+            }
+            OutputMode::Json => {
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "deleted": true,
+                    "name": project.name,
+                    "id": project.id,
+                })).expect("project deleted serialization should not fail")
+            }
+            OutputMode::Pretty => {
+                format!("Deleted project: {} [{}]", project.name, project.id)
+            }
+        }
     }
 }
 

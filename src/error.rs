@@ -31,6 +31,12 @@ pub enum TodoError {
 
     #[error("Project has {0} tasks. Delete or move them first.")]
     ProjectHasTasks(i64),
+
+    #[error("Project not found: {0}")]
+    ProjectNotFound(String),
+
+    #[error("Project already exists: {0}")]
+    ProjectExists(String),
 }
 
 impl TodoError {
@@ -46,6 +52,8 @@ impl TodoError {
             TodoError::ParseError(_) => "E_PARSE_ERROR",
             TodoError::Io(_) => "E_IO",
             TodoError::ProjectHasTasks(_) => "E_PROJECT_HAS_TASKS",
+            TodoError::ProjectNotFound(_) => "E_PROJECT_NOT_FOUND",
+            TodoError::ProjectExists(_) => "E_PROJECT_EXISTS",
         }
     }
 

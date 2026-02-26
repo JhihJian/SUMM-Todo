@@ -11,7 +11,7 @@ use crate::task::{Creator, Priority, Project, Status, Task};
 // ProjectStats
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct ProjectStats {
     pub total: i64,
     pub pending: i64,

@@ -45,5 +45,6 @@ fn run(command: Command, output: &Output) -> Result<String, TodoError> {
         Command::Undo(args) => commands::undo::execute(&db, args, output),
         Command::Abandon(args) => commands::abandon::execute(&db, args, output),
         Command::Search(args) => commands::search::execute(&db, args, output),
+        Command::Project(args) => commands::project::execute(&db, args.command, output),
     }
 }
