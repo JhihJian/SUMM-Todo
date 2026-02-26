@@ -1,5 +1,5 @@
 use chrono::Utc;
-use crate::db::ProjectStats;
+use crate::db::{Database, ProjectStats};
 use crate::error::TodoError;
 use crate::task::{Priority, Project, Status, Task};
 
@@ -58,6 +58,56 @@ impl Output {
                 .collect::<Vec<_>>()
                 .join("\n\n"),
         }
+    }
+
+    pub fn task_list_grouped(&self, tasks: &[Task], db: &Database) -> Result<String, TodoError> {
+        // For non-Pretty modes, just return the regular task list (no grouping)
+        if self.mode != OutputMode::Pretty {
+            return Ok(self.task_list(tasks));
+        }
+
+        // Group tasks by project_id
+        let mut groups: std::collections::HashMap<Option<String>, Vec<&Task>> =
+            std::collections::HashMap::new();
+
+        for task in tasks {
+            groups.entry(task.project_id.clone()).or_default().push(task);
+        }
+
+        let mut result = String::new();
+
+        // Sort groups: projects with names first, then no-project tasks
+        let mut project_ids: Vec<_> = groups.keys().collect();
+        project_ids.sort_by(|a, b| {
+            match (a, b) {
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (Some(a_id), Some(b_id)) => a_id.cmp(b_id),
+                (None, None) => std::cmp::Ordering::Equal,
+            }
+        });
+
+        for project_id in project_ids {
+            let group_tasks = groups.get(&project_id).unwrap();
+
+            let project_name = if let Some(ref pid) = project_id {
+                db.get_project(pid)?
+                    .map(|p| p.name)
+                    .unwrap_or_else(|| "unknown".to_string())
+            } else {
+                "(no project)".to_string()
+            };
+
+            result.push_str(&format!("=== {} ({}) ===\n", project_name, group_tasks.len()));
+
+            for task in group_tasks {
+                result.push_str(&self.pretty_task(task));
+                result.push('\n');
+            }
+            result.push('\n');
+        }
+
+        Ok(result.trim_end().to_string())
     }
 
     pub fn log(&self, tasks: &[Task]) -> String {

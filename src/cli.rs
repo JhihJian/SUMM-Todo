@@ -196,6 +196,10 @@ pub struct ListArgs {
     /// show all tasks including done and cancelled
     #[argh(switch)]
     pub all: bool,
+
+    /// filter by project name
+    #[argh(option, short = 'p')]
+    pub project: Option<String>,
 }
 
 #[derive(FromArgs, PartialEq, Debug)]

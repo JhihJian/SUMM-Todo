@@ -6,8 +6,17 @@ use crate::task::Status;
 use crate::time_parse::parse_since;
 
 pub fn execute(db: &Database, args: ListArgs, output: &Output) -> Result<String, TodoError> {
+    // Resolve project_id if project filter specified
+    let project_id = if let Some(ref project_name) = args.project {
+        let project = db
+            .get_project_by_name(project_name)?
+            .ok_or_else(|| TodoError::ProjectNotFound(project_name.clone()))?;
+        Some(project.id)
+    } else {
+        None
+    };
+
     let status = if args.status.is_empty() {
-        // Default: show only active tasks (exclude done and cancelled)
         if args.all {
             None
         } else {
@@ -42,9 +51,15 @@ pub fn execute(db: &Database, args: ListArgs, output: &Output) -> Result<String,
         limit: args.limit,
         sort: None,
         overdue: args.overdue,
-        project_id: None,
+        project_id: project_id.clone(),
     };
 
     let tasks = db.list_tasks(&filter)?;
-    Ok(output.task_list(&tasks))
+
+    // Group by project if no specific project filter
+    if project_id.is_none() {
+        Ok(output.task_list_grouped(&tasks, db)?)
+    } else {
+        Ok(output.task_list(&tasks))
+    }
 }

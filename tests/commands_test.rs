@@ -252,6 +252,7 @@ fn list_filters_by_status() {
             limit: None,
             overdue: false,
             all: false,
+            project: None,
         },
         &out,
     )
@@ -516,6 +517,7 @@ fn list_overdue_filters_correctly() {
             limit: None,
             overdue: true,
             all: false,
+            project: None,
         },
         &out,
     )
