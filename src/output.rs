@@ -170,9 +170,6 @@ impl Output {
         line
     }
 
-    // Project output methods (implemented in Task 4)
-    // These are stubs that return basic output for now
-
     pub fn project(&self, project: &Project) -> String {
         match self.mode {
             OutputMode::Toon => toon_format::encode_default(project).unwrap_or_else(|e| {
@@ -181,44 +178,32 @@ impl Output {
             OutputMode::Json => {
                 serde_json::to_string_pretty(project).expect("project serialization should not fail")
             }
-            OutputMode::Pretty => {
-                let mut out = format!("Project: {}\n", project.name);
-                if let Some(ref desc) = project.description {
-                    out.push_str(&format!("Description: {}\n", desc));
-                }
-                out.push_str(&format!("ID: {}\n", project.id));
-                out
-            }
+            OutputMode::Pretty => self.pretty_project(project),
         }
     }
 
     pub fn project_list_item(&self, project: &Project, stats: &ProjectStats) -> String {
         match self.mode {
-            OutputMode::Toon => {
-                let data = serde_json::json!({
-                    "name": project.name,
+            OutputMode::Toon | OutputMode::Json => {
+                let obj = serde_json::json!({
                     "id": project.id,
-                    "total": stats.total,
-                    "pending": stats.pending,
-                    "in_progress": stats.in_progress,
-                    "done": stats.done,
+                    "name": project.name,
+                    "tasks": stats.total,
+                    "task_breakdown": {
+                        "pending": stats.pending,
+                        "in_progress": stats.in_progress,
+                        "done": stats.done,
+                    }
                 });
-                toon_format::encode_default(&data).unwrap_or_else(|e| {
-                    format!("error: failed to encode project list item to TOON: {}", e)
+                toon_format::encode_default(&obj).unwrap_or_else(|e| {
+                    format!("error: failed to encode project to TOON: {}", e)
                 })
-            }
-            OutputMode::Json => {
-                serde_json::to_string_pretty(&serde_json::json!({
-                    "name": project.name,
-                    "id": project.id,
-                    "stats": stats,
-                })).expect("project list item serialization should not fail")
             }
             OutputMode::Pretty => {
                 format!(
-                    "Project: {} [{}]\n  Tasks: {} total, {} pending, {} in progress, {} done",
-                    project.name,
+                    "id: \"{}\"\nname: {}\ntasks: {} ({} pending, {} in_progress, {} done)",
                     project.id,
+                    project.name,
                     stats.total,
                     stats.pending,
                     stats.in_progress,
@@ -230,67 +215,79 @@ impl Output {
 
     pub fn project_detail(&self, project: &Project, stats: &ProjectStats, recent_tasks: &[Task]) -> String {
         match self.mode {
-            OutputMode::Toon => {
-                let data = serde_json::json!({
-                    "project": project,
-                    "stats": stats,
-                    "recent_tasks": recent_tasks,
+            OutputMode::Toon | OutputMode::Json => {
+                let tasks_json: Vec<_> = recent_tasks.iter().map(|t| serde_json::json!({
+                    "id": t.id,
+                    "title": t.title,
+                    "status": t.status.to_string(),
+                })).collect();
+
+                let obj = serde_json::json!({
+                    "name": project.name,
+                    "description": project.description,
+                    "created": project.created_at.format("%Y-%m-%d").to_string(),
+                    "statistics": {
+                        "total": stats.total,
+                        "pending": stats.pending,
+                        "in_progress": stats.in_progress,
+                        "blocked": stats.blocked,
+                        "done": stats.done,
+                    },
+                    "recent_tasks": tasks_json,
                 });
-                toon_format::encode_default(&data).unwrap_or_else(|e| {
-                    format!("error: failed to encode project detail to TOON: {}", e)
+                toon_format::encode_default(&obj).unwrap_or_else(|e| {
+                    format!("error: failed to encode project to TOON: {}", e)
                 })
             }
-            OutputMode::Json => {
-                serde_json::to_string_pretty(&serde_json::json!({
-                    "project": project,
-                    "stats": stats,
-                    "recent_tasks": recent_tasks,
-                })).expect("project detail serialization should not fail")
-            }
             OutputMode::Pretty => {
-                let mut out = format!("Project: {}\n", project.name);
-                if let Some(ref desc) = project.description {
-                    out.push_str(&format!("Description: {}\n", desc));
+                let mut out = format!(
+                    "name: {}\ndescription: {}\ncreated: {}\n\nstatistics:\n  total: {}\n  pending: {}\n  in_progress: {}\n  blocked: {}\n  done: {}\n\nrecent tasks:\n",
+                    project.name,
+                    project.description.as_deref().unwrap_or("N/A"),
+                    project.created_at.format("%Y-%m-%d"),
+                    stats.total,
+                    stats.pending,
+                    stats.in_progress,
+                    stats.blocked,
+                    stats.done,
+                );
+
+                for task in recent_tasks {
+                    out.push_str(&format!("  {}\n", self.pretty_task(task)));
                 }
-                out.push_str(&format!("ID: {}\n\n", project.id));
-                out.push_str(&format!(
-                    "Stats: {} total, {} pending, {} in progress, {} blocked, {} done, {} cancelled\n\n",
-                    stats.total, stats.pending, stats.in_progress, stats.blocked, stats.done, stats.cancelled
-                ));
-                if !recent_tasks.is_empty() {
-                    out.push_str("Recent tasks:\n");
-                    for task in recent_tasks {
-                        out.push_str(&format!("  {} [{}] {}\n", task.id, task.status, task.title));
-                    }
+
+                if recent_tasks.is_empty() {
+                    out.push_str("  (no tasks)\n");
                 }
-                out
+
+                out.trim_end().to_string()
             }
         }
     }
 
     pub fn project_deleted(&self, project: &Project) -> String {
         match self.mode {
-            OutputMode::Toon => {
-                let data = serde_json::json!({
+            OutputMode::Toon | OutputMode::Json => {
+                let obj = serde_json::json!({
                     "deleted": true,
                     "name": project.name,
-                    "id": project.id,
                 });
-                toon_format::encode_default(&data).unwrap_or_else(|e| {
-                    format!("error: failed to encode project deleted to TOON: {}", e)
+                toon_format::encode_default(&obj).unwrap_or_else(|e| {
+                    format!("error: failed to encode to TOON: {}", e)
                 })
             }
-            OutputMode::Json => {
-                serde_json::to_string_pretty(&serde_json::json!({
-                    "deleted": true,
-                    "name": project.name,
-                    "id": project.id,
-                })).expect("project deleted serialization should not fail")
-            }
             OutputMode::Pretty => {
-                format!("Deleted project: {} [{}]", project.name, project.id)
+                format!("Project '{}' deleted.", project.name)
             }
         }
+    }
+
+    fn pretty_project(&self, project: &Project) -> String {
+        let mut out = format!("id: \"{}\"\nname: {}", project.id, project.name);
+        if let Some(ref desc) = project.description {
+            out.push_str(&format!("\ndescription: {}", desc));
+        }
+        out
     }
 }
 
