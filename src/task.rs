@@ -132,6 +132,8 @@ pub struct Task {
     pub title: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<String>,
     pub creator: Creator,
     pub created_at: DateTime<Utc>,
     pub priority: Priority,
@@ -164,6 +166,7 @@ impl Task {
             id: id.into(),
             title: title.into(),
             content: None,
+            project_id: None,
             creator: Creator::Human,
             created_at: Utc::now(),
             priority: Priority::Medium,
@@ -254,6 +257,30 @@ impl Task {
 
         self.status = target;
         Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Project
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Project {
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+impl Project {
+    pub fn new(id: impl Into<String>, name: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            name: name.into(),
+            description: None,
+            created_at: Utc::now(),
+        }
     }
 }
 

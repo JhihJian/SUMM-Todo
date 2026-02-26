@@ -94,6 +94,12 @@ impl Database {
             self.conn.execute_batch("PRAGMA user_version = 2;")?;
         }
 
+        if version < 3 {
+            let sql = include_str!("../migrations/v3.sql");
+            self.conn.execute_batch(sql)?;
+            self.conn.execute_batch("PRAGMA user_version = 3;")?;
+        }
+
         Ok(())
     }
 
@@ -109,13 +115,13 @@ impl Database {
                 priority, tags, parent_id, due,
                 status, assignee, blocked_reason,
                 result, artifacts, log,
-                started_at, finished_at, content
+                started_at, finished_at, content, project_id
             ) VALUES (
                 ?1, ?2, ?3, ?4,
                 ?5, ?6, ?7, ?8,
                 ?9, ?10, ?11,
                 ?12, ?13, ?14,
-                ?15, ?16, ?17
+                ?15, ?16, ?17, ?18
             )",
             params![
                 task.id,
@@ -135,6 +141,7 @@ impl Database {
                 task.started_at.map(|d| d.to_rfc3339()),
                 task.finished_at.map(|d| d.to_rfc3339()),
                 task.content,
+                task.project_id,
             ],
         )?;
         Ok(())
@@ -147,7 +154,7 @@ impl Database {
                     priority, tags, parent_id, due,
                     status, assignee, blocked_reason,
                     result, artifacts, log,
-                    started_at, finished_at, content
+                    started_at, finished_at, content, project_id
              FROM tasks WHERE id = ?1",
         )?;
 
@@ -166,7 +173,7 @@ impl Database {
                 priority = ?5, tags = ?6, parent_id = ?7, due = ?8,
                 status = ?9, assignee = ?10, blocked_reason = ?11,
                 result = ?12, artifacts = ?13, log = ?14,
-                started_at = ?15, finished_at = ?16, content = ?17
+                started_at = ?15, finished_at = ?16, content = ?17, project_id = ?18
              WHERE id = ?1",
             params![
                 task.id,
@@ -186,6 +193,7 @@ impl Database {
                 task.started_at.map(|d| d.to_rfc3339()),
                 task.finished_at.map(|d| d.to_rfc3339()),
                 task.content,
+                task.project_id,
             ],
         )?;
         Ok(())
@@ -269,7 +277,7 @@ impl Database {
                     priority, tags, parent_id, due,
                     status, assignee, blocked_reason,
                     result, artifacts, log,
-                    started_at, finished_at, content
+                    started_at, finished_at, content, project_id
              FROM tasks
              WHERE {}
              ORDER BY {}
@@ -412,7 +420,7 @@ impl Database {
                     priority, tags, parent_id, due,
                     status, assignee, blocked_reason,
                     result, artifacts, log,
-                    started_at, finished_at, content
+                    started_at, finished_at, content, project_id
              FROM tasks
              WHERE {}
              ORDER BY {}
@@ -452,6 +460,7 @@ fn row_to_task(row: &Row<'_>) -> Result<Task, TodoError> {
         id: row.get(0)?,
         title: row.get(1)?,
         content: row.get(16)?,
+        project_id: row.get(17)?,
         creator: creator_str.parse::<Creator>()?,
         created_at: DateTime::parse_from_rfc3339(&created_at_str)
             .map_err(|e| TodoError::ParseError(e.to_string()))?
@@ -522,7 +531,7 @@ mod tests {
             .conn
             .query_row("PRAGMA user_version;", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 2);
+        assert_eq!(version, 3);
     }
 
     #[test]
