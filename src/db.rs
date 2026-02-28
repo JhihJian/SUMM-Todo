@@ -115,6 +115,12 @@ impl Database {
             self.conn.execute_batch("PRAGMA user_version = 3;")?;
         }
 
+        if version < 4 {
+            let sql = include_str!("../migrations/v4.sql");
+            self.conn.execute_batch(sql)?;
+            self.conn.execute_batch("PRAGMA user_version = 4;")?;
+        }
+
         Ok(())
     }
 
@@ -221,12 +227,13 @@ impl Database {
     /// Insert a new project.
     pub fn insert_project(&self, project: &Project) -> Result<(), TodoError> {
         self.conn.execute(
-            "INSERT INTO projects (id, name, description, created_at)
-             VALUES (?1, ?2, ?3, ?4)",
+            "INSERT INTO projects (id, name, description, path, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
             params![
                 project.id,
                 project.name,
                 project.description,
+                project.path,
                 project.created_at.to_rfc3339(),
             ],
         )?;
@@ -236,7 +243,7 @@ impl Database {
     /// Fetch a project by ID.
     pub fn get_project(&self, id: &str) -> Result<Option<Project>, TodoError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, description, created_at FROM projects WHERE id = ?1",
+            "SELECT id, name, description, path, created_at FROM projects WHERE id = ?1",
         )?;
         let mut rows = stmt.query(params![id])?;
         match rows.next()? {
@@ -248,7 +255,7 @@ impl Database {
     /// Fetch a project by name.
     pub fn get_project_by_name(&self, name: &str) -> Result<Option<Project>, TodoError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, description, created_at FROM projects WHERE name = ?1",
+            "SELECT id, name, description, path, created_at FROM projects WHERE name = ?1",
         )?;
         let mut rows = stmt.query(params![name])?;
         match rows.next()? {
@@ -260,7 +267,7 @@ impl Database {
     /// List all projects.
     pub fn list_projects(&self) -> Result<Vec<Project>, TodoError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, description, created_at FROM projects ORDER BY name ASC",
+            "SELECT id, name, description, path, created_at FROM projects ORDER BY name ASC",
         )?;
         let mut rows = stmt.query([])?;
         let mut projects = Vec::new();
@@ -273,8 +280,8 @@ impl Database {
     /// Update a project.
     pub fn update_project(&self, project: &Project) -> Result<(), TodoError> {
         self.conn.execute(
-            "UPDATE projects SET name = ?2, description = ?3 WHERE id = ?1",
-            params![project.id, project.name, project.description,],
+            "UPDATE projects SET name = ?2, description = ?3, path = ?4 WHERE id = ?1",
+            params![project.id, project.name, project.description, project.path,],
         )?;
         Ok(())
     }
@@ -668,11 +675,12 @@ fn parse_optional_datetime(
 }
 
 fn row_to_project(row: &Row<'_>) -> Result<Project, TodoError> {
-    let created_at_str: String = row.get(3)?;
+    let created_at_str: String = row.get(4)?;
     Ok(Project {
         id: row.get(0)?,
         name: row.get(1)?,
         description: row.get(2)?,
+        path: row.get(3)?,
         created_at: DateTime::parse_from_rfc3339(&created_at_str)
             .map_err(|e| TodoError::ParseError(e.to_string()))?
             .with_timezone(&Utc),
@@ -712,7 +720,7 @@ mod tests {
             .conn
             .query_row("PRAGMA user_version;", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 3);
+        assert_eq!(version, 4);
     }
 
     #[test]

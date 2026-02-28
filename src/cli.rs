@@ -368,6 +368,10 @@ pub struct ProjectAddArgs {
     /// project description
     #[argh(option, short = 'd')]
     pub description: Option<String>,
+
+    /// project path
+    #[argh(option, short = 'p')]
+    pub path: Option<String>,
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
@@ -385,6 +389,10 @@ pub struct ProjectEditArgs {
     /// new description
     #[argh(option, short = 'd')]
     pub description: Option<String>,
+
+    /// new project path
+    #[argh(option, short = 'p')]
+    pub path: Option<String>,
 }
 
 #[derive(FromArgs, PartialEq, Debug)]

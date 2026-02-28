@@ -66,7 +66,7 @@ sudo cp target/release/todo /usr/local/bin/
 todo project add "my-app" -d "My Application"
 
 # Create tasks (with or without project)
-todo add "my-app: Implement JWT auth" -r high -t backend
+todo add "my-app: Implement JWT auth" -P high -t backend
 todo add "my-app: Update README" -t docs
 todo add "Standalone task"
 
@@ -109,8 +109,8 @@ todo done <id> -m "Implemented JWT auth with RS256"
 Organize tasks into projects:
 
 ```bash
-# Create a project
-todo project add "web-app" -d "Web application"
+# Create a project (with optional path)
+todo project add "web-app" -d "Web application" -p /path/to/web-app
 
 # List all projects
 todo project list
@@ -118,8 +118,8 @@ todo project list
 # Show project details with statistics
 todo project show web-app
 
-# Edit project
-todo project edit web-app -n "my-web-app" -d "Updated description"
+# Edit project (name, description, or path)
+todo project edit web-app -n "my-web-app" -d "Updated description" -p /new/path
 
 # Add task to project
 todo add "web-app: Setup database"
@@ -130,6 +130,14 @@ todo list -p web-app
 # Delete project (must have no tasks)
 todo project delete web-app
 ```
+
+### Project Fields
+
+| Field | Flag | Description |
+|-------|------|-------------|
+| `name` | positional | Project name (required) |
+| `description` | `-d` | Project description |
+| `path` | `-p` | Project directory path |
 
 ## Task States
 

@@ -235,7 +235,7 @@ impl Output {
     pub fn project_list_item(&self, project: &Project, stats: &ProjectStats) -> String {
         match self.mode {
             OutputMode::Toon | OutputMode::Json => {
-                let obj = serde_json::json!({
+                let mut obj = serde_json::json!({
                     "id": project.id,
                     "name": project.name,
                     "tasks": stats.total,
@@ -245,12 +245,15 @@ impl Output {
                         "done": stats.done,
                     }
                 });
+                if let Some(ref path) = project.path {
+                    obj["path"] = serde_json::json!(path);
+                }
                 toon_format::encode_default(&obj).unwrap_or_else(|e| {
                     format!("error: failed to encode project to TOON: {}", e)
                 })
             }
             OutputMode::Pretty => {
-                format!(
+                let mut out = format!(
                     "id: \"{}\"\nname: {}\ntasks: {} ({} pending, {} in_progress, {} done)",
                     project.id,
                     project.name,
@@ -258,7 +261,11 @@ impl Output {
                     stats.pending,
                     stats.in_progress,
                     stats.done
-                )
+                );
+                if let Some(ref path) = project.path {
+                    out.push_str(&format!("\npath: {}", path));
+                }
+                out
             }
         }
     }
@@ -272,7 +279,7 @@ impl Output {
                     "status": t.status.to_string(),
                 })).collect();
 
-                let obj = serde_json::json!({
+                let mut obj = serde_json::json!({
                     "name": project.name,
                     "description": project.description,
                     "created": project.created_at.format("%Y-%m-%d").to_string(),
@@ -285,22 +292,30 @@ impl Output {
                     },
                     "recent_tasks": tasks_json,
                 });
+                if let Some(ref path) = project.path {
+                    obj["path"] = serde_json::json!(path);
+                }
                 toon_format::encode_default(&obj).unwrap_or_else(|e| {
                     format!("error: failed to encode project to TOON: {}", e)
                 })
             }
             OutputMode::Pretty => {
                 let mut out = format!(
-                    "name: {}\ndescription: {}\ncreated: {}\n\nstatistics:\n  total: {}\n  pending: {}\n  in_progress: {}\n  blocked: {}\n  done: {}\n\nrecent tasks:\n",
+                    "name: {}\ndescription: {}",
                     project.name,
                     project.description.as_deref().unwrap_or("N/A"),
+                );
+                if let Some(ref path) = project.path {
+                    out.push_str(&format!("\npath: {}", path));
+                }
+                out.push_str(&format!("\ncreated: {}\n\nstatistics:\n  total: {}\n  pending: {}\n  in_progress: {}\n  blocked: {}\n  done: {}\n\nrecent tasks:\n",
                     project.created_at.format("%Y-%m-%d"),
                     stats.total,
                     stats.pending,
                     stats.in_progress,
                     stats.blocked,
                     stats.done,
-                );
+                ));
 
                 for task in recent_tasks {
                     out.push_str(&format!("  {}\n", self.pretty_task(task)));
@@ -336,6 +351,9 @@ impl Output {
         let mut out = format!("id: \"{}\"\nname: {}", project.id, project.name);
         if let Some(ref desc) = project.description {
             out.push_str(&format!("\ndescription: {}", desc));
+        }
+        if let Some(ref path) = project.path {
+            out.push_str(&format!("\npath: {}", path));
         }
         out
     }

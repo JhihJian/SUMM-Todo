@@ -24,6 +24,7 @@ fn add(db: &Database, args: ProjectAddArgs, output: &Output) -> Result<String, T
     let id = generate_id(&db.conn)?;
     let mut project = Project::new(id, args.name);
     project.description = args.description;
+    project.path = args.path;
 
     db.insert_project(&project)?;
     Ok(output.project(&project))
@@ -48,6 +49,10 @@ fn edit(db: &Database, args: ProjectEditArgs, output: &Output) -> Result<String,
 
     if let Some(description) = args.description {
         updated.description = Some(description);
+    }
+
+    if let Some(path) = args.path {
+        updated.path = Some(path);
     }
 
     db.update_project(&updated)?;

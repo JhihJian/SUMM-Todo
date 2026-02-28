@@ -270,6 +270,8 @@ pub struct Project {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -279,6 +281,7 @@ impl Project {
             id: id.into(),
             name: name.into(),
             description: None,
+            path: None,
             created_at: Utc::now(),
         }
     }
