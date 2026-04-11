@@ -2,6 +2,7 @@ pub mod cli;
 pub mod commands;
 pub mod db;
 pub mod output;
+pub mod sync;
 pub mod time_parse;
 
 // Re-export core types so existing `use crate::task::`, `use crate::error::`,

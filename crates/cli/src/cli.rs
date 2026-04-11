@@ -40,6 +40,7 @@ pub enum Command {
     Abandon(AbandonArgs),
     Search(SearchArgs),
     Project(ProjectArgs),
+    Sync(SyncArgs),
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
@@ -421,3 +422,48 @@ pub struct ProjectDeleteArgs {
     #[argh(positional)]
     pub name: String,
 }
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "sync")]
+/// Sync tasks with remote server
+pub struct SyncArgs {
+    #[argh(subcommand)]
+    pub command: Option<SyncCommand>,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand)]
+pub enum SyncCommand {
+    SyncInit(SyncInitArgs),
+    SyncPush(SyncPushArgs),
+    SyncPull(SyncPullArgs),
+    SyncStatus(SyncStatusArgs),
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "init")]
+/// Initialize sync configuration
+pub struct SyncInitArgs {
+    /// server URL
+    #[argh(option)]
+    pub server: String,
+
+    /// API key
+    #[argh(option)]
+    pub key: String,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "push")]
+/// Push local changes to server
+pub struct SyncPushArgs {}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "pull")]
+/// Pull changes from server
+pub struct SyncPullArgs {}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "status")]
+/// Show sync status
+pub struct SyncStatusArgs {}
