@@ -1700,7 +1700,7 @@ dependencies = [
 
 [[package]]
 name = "todo"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "argh",
  "assert_cmd",
@@ -1713,7 +1713,20 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.18",
+ "todo-core",
  "toon-format",
+ "uuid",
+]
+
+[[package]]
+name = "todo-core"
+version = "0.3.1"
+dependencies = [
+ "chrono",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
  "uuid",
 ]
 

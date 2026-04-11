@@ -98,25 +98,25 @@ impl Database {
                 .query_row("PRAGMA user_version;", [], |row| row.get(0))?;
 
         if version < 1 {
-            let sql = include_str!("../migrations/v1.sql");
+            let sql = include_str!("../../../migrations/v1.sql");
             self.conn.execute_batch(sql)?;
             self.conn.execute_batch("PRAGMA user_version = 1;")?;
         }
 
         if version < 2 {
-            let sql = include_str!("../migrations/v2.sql");
+            let sql = include_str!("../../../migrations/v2.sql");
             self.conn.execute_batch(sql)?;
             self.conn.execute_batch("PRAGMA user_version = 2;")?;
         }
 
         if version < 3 {
-            let sql = include_str!("../migrations/v3.sql");
+            let sql = include_str!("../../../migrations/v3.sql");
             self.conn.execute_batch(sql)?;
             self.conn.execute_batch("PRAGMA user_version = 3;")?;
         }
 
         if version < 4 {
-            let sql = include_str!("../migrations/v4.sql");
+            let sql = include_str!("../../../migrations/v4.sql");
             self.conn.execute_batch(sql)?;
             self.conn.execute_batch("PRAGMA user_version = 4;")?;
         }
