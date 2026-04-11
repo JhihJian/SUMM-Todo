@@ -47,6 +47,15 @@ pub struct Database {
     pub(crate) conn: Connection,
 }
 
+// Column list for tasks (used in SELECT, INSERT, UPDATE)
+const TASK_COLUMNS: &str = "id, title, creator, created_at, \
+    priority, tags, parent_id, due, \
+    status, assignee, blocked_reason, \
+    result, artifacts, log, \
+    started_at, finished_at, content, project_id, updated_at";
+
+const PROJECT_COLUMNS: &str = "id, name, description, path, created_at, updated_at";
+
 impl Database {
     /// Open (or create) the database at the default path and run migrations.
     pub fn open() -> Result<Self, TodoError> {
@@ -121,6 +130,12 @@ impl Database {
             self.conn.execute_batch("PRAGMA user_version = 4;")?;
         }
 
+        if version < 5 {
+            let sql = include_str!("../../../migrations/v5.sql");
+            self.conn.execute_batch(sql)?;
+            self.conn.execute_batch("PRAGMA user_version = 5;")?;
+        }
+
         Ok(())
     }
 
@@ -131,19 +146,13 @@ impl Database {
     /// Insert a new task.
     pub fn insert_task(&self, task: &Task) -> Result<(), TodoError> {
         self.conn.execute(
-            "INSERT INTO tasks (
-                id, title, creator, created_at,
-                priority, tags, parent_id, due,
-                status, assignee, blocked_reason,
-                result, artifacts, log,
-                started_at, finished_at, content, project_id
-            ) VALUES (
+            &format!("INSERT INTO tasks ({TASK_COLUMNS}) VALUES (
                 ?1, ?2, ?3, ?4,
                 ?5, ?6, ?7, ?8,
                 ?9, ?10, ?11,
                 ?12, ?13, ?14,
-                ?15, ?16, ?17, ?18
-            )",
+                ?15, ?16, ?17, ?18, ?19
+            )"),
             params![
                 task.id,
                 task.title,
@@ -163,6 +172,7 @@ impl Database {
                 task.finished_at.map(|d| d.to_rfc3339()),
                 task.content,
                 task.project_id,
+                task.updated_at.map(|d| d.to_rfc3339()).unwrap_or_else(|| Utc::now().to_rfc3339()),
             ],
         )?;
         Ok(())
@@ -171,12 +181,7 @@ impl Database {
     /// Fetch a single task by ID.
     pub fn get_task(&self, id: &str) -> Result<Option<Task>, TodoError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, title, creator, created_at,
-                    priority, tags, parent_id, due,
-                    status, assignee, blocked_reason,
-                    result, artifacts, log,
-                    started_at, finished_at, content, project_id
-             FROM tasks WHERE id = ?1",
+            &format!("SELECT {TASK_COLUMNS} FROM tasks WHERE id = ?1"),
         )?;
 
         let mut rows = stmt.query(params![id])?;
@@ -194,7 +199,8 @@ impl Database {
                 priority = ?5, tags = ?6, parent_id = ?7, due = ?8,
                 status = ?9, assignee = ?10, blocked_reason = ?11,
                 result = ?12, artifacts = ?13, log = ?14,
-                started_at = ?15, finished_at = ?16, content = ?17, project_id = ?18
+                started_at = ?15, finished_at = ?16, content = ?17, project_id = ?18,
+                updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
              WHERE id = ?1",
             params![
                 task.id,
@@ -227,14 +233,14 @@ impl Database {
     /// Insert a new project.
     pub fn insert_project(&self, project: &Project) -> Result<(), TodoError> {
         self.conn.execute(
-            "INSERT INTO projects (id, name, description, path, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
+            &format!("INSERT INTO projects ({PROJECT_COLUMNS}) VALUES (?1, ?2, ?3, ?4, ?5, ?6)"),
             params![
                 project.id,
                 project.name,
                 project.description,
                 project.path,
                 project.created_at.to_rfc3339(),
+                project.updated_at.map(|d| d.to_rfc3339()).unwrap_or_else(|| Utc::now().to_rfc3339()),
             ],
         )?;
         Ok(())
@@ -243,7 +249,7 @@ impl Database {
     /// Fetch a project by ID.
     pub fn get_project(&self, id: &str) -> Result<Option<Project>, TodoError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, description, path, created_at FROM projects WHERE id = ?1",
+            &format!("SELECT {PROJECT_COLUMNS} FROM projects WHERE id = ?1"),
         )?;
         let mut rows = stmt.query(params![id])?;
         match rows.next()? {
@@ -255,7 +261,7 @@ impl Database {
     /// Fetch a project by name.
     pub fn get_project_by_name(&self, name: &str) -> Result<Option<Project>, TodoError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, description, path, created_at FROM projects WHERE name = ?1",
+            &format!("SELECT {PROJECT_COLUMNS} FROM projects WHERE name = ?1"),
         )?;
         let mut rows = stmt.query(params![name])?;
         match rows.next()? {
@@ -267,7 +273,7 @@ impl Database {
     /// List all projects.
     pub fn list_projects(&self) -> Result<Vec<Project>, TodoError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, description, path, created_at FROM projects ORDER BY name ASC",
+            &format!("SELECT {PROJECT_COLUMNS} FROM projects ORDER BY name ASC"),
         )?;
         let mut rows = stmt.query([])?;
         let mut projects = Vec::new();
@@ -280,7 +286,7 @@ impl Database {
     /// Update a project.
     pub fn update_project(&self, project: &Project) -> Result<(), TodoError> {
         self.conn.execute(
-            "UPDATE projects SET name = ?2, description = ?3, path = ?4 WHERE id = ?1",
+            "UPDATE projects SET name = ?2, description = ?3, path = ?4, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?1",
             params![project.id, project.name, project.description, project.path,],
         )?;
         Ok(())
@@ -442,11 +448,7 @@ impl Database {
         let limit = filter.limit.unwrap_or(20);
 
         let sql = format!(
-            "SELECT id, title, creator, created_at,
-                    priority, tags, parent_id, due,
-                    status, assignee, blocked_reason,
-                    result, artifacts, log,
-                    started_at, finished_at, content, project_id
+            "SELECT {TASK_COLUMNS}
              FROM tasks
              WHERE {}
              ORDER BY {}
@@ -500,16 +502,12 @@ impl Database {
 
         // Search condition for title
         if use_regex {
-            // For regex, we use LIKE with the pattern as-is (user provides regex pattern)
-            // Note: SQLite REGEXP requires a user-defined function, so we fall back to LIKE
-            // For true regex support, we would need to add a custom function
             conditions.push(format!("title REGEXP ?{}", param_idx));
         } else {
             conditions.push(format!("title LIKE ?{}", param_idx));
         }
         param_idx += 1;
 
-        // For LIKE, wrap with wildcards; for REGEXP, use as-is
         let pattern = if use_regex {
             query.to_string()
         } else {
@@ -592,11 +590,7 @@ impl Database {
         let limit = filter.limit.unwrap_or(20);
 
         let sql = format!(
-            "SELECT id, title, creator, created_at,
-                    priority, tags, parent_id, due,
-                    status, assignee, blocked_reason,
-                    result, artifacts, log,
-                    started_at, finished_at, content, project_id
+            "SELECT {TASK_COLUMNS}
              FROM tasks
              WHERE {}
              ORDER BY {}
@@ -616,6 +610,98 @@ impl Database {
             tasks.push(row_to_task(row)?);
         }
         Ok(tasks)
+    }
+
+    // -----------------------------------------------------------------------
+    // Sync config operations
+    // -----------------------------------------------------------------------
+
+    /// Get a sync config value by key.
+    pub fn get_sync_config(&self, key: &str) -> Result<Option<String>, TodoError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT value FROM sync_config WHERE key = ?1",
+        )?;
+        let mut rows = stmt.query(params![key])?;
+        match rows.next()? {
+            Some(row) => Ok(Some(row.get(0)?)),
+            None => Ok(None),
+        }
+    }
+
+    /// Set a sync config value (insert or replace).
+    pub fn set_sync_config(&self, key: &str, value: &str) -> Result<(), TodoError> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO sync_config (key, value) VALUES (?1, ?2)",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+
+    /// Clear all sync_log entries (after successful push).
+    pub fn clear_sync_log(&self) -> Result<(), TodoError> {
+        self.conn.execute("DELETE FROM sync_log", [])?;
+        Ok(())
+    }
+
+    /// Get pending sync changes from sync_log, resolving to latest action per entity.
+    /// Returns (upserted_tasks, deleted_task_ids, upserted_projects, deleted_project_ids).
+    pub fn get_sync_pending(&self) -> Result<(Vec<Task>, Vec<String>, Vec<Project>, Vec<String>), TodoError> {
+        // Resolve latest action per (entity_type, entity_id)
+        let mut task_actions: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let mut project_actions: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+
+        let mut stmt = self.conn.prepare(
+            "SELECT entity_type, entity_id, action FROM sync_log ORDER BY recorded_at ASC",
+        )?;
+        let mut rows = stmt.query([])?;
+
+        while let Some(row) = rows.next()? {
+            let entity_type: String = row.get(0)?;
+            let entity_id: String = row.get(1)?;
+            let action: String = row.get(2)?;
+
+            match entity_type.as_str() {
+                "task" => { task_actions.insert(entity_id, action); }
+                "project" => { project_actions.insert(entity_id, action); }
+                _ => {}
+            }
+        }
+
+        let mut tasks = Vec::new();
+        let mut deleted_task_ids = Vec::new();
+
+        for (id, action) in &task_actions {
+            match action.as_str() {
+                "upsert" => {
+                    if let Some(task) = self.get_task(id)? {
+                        tasks.push(task);
+                    }
+                }
+                "delete" => {
+                    deleted_task_ids.push(id.clone());
+                }
+                _ => {}
+            }
+        }
+
+        let mut projects = Vec::new();
+        let mut deleted_project_ids = Vec::new();
+
+        for (id, action) in &project_actions {
+            match action.as_str() {
+                "upsert" => {
+                    if let Some(project) = self.get_project(id)? {
+                        projects.push(project);
+                    }
+                }
+                "delete" => {
+                    deleted_project_ids.push(id.clone());
+                }
+                _ => {}
+            }
+        }
+
+        Ok((tasks, deleted_task_ids, projects, deleted_project_ids))
     }
 }
 
@@ -658,6 +744,7 @@ fn row_to_task(row: &Row<'_>) -> Result<Task, TodoError> {
         log: row.get(13)?,
         started_at: parse_optional_datetime(row.get::<_, Option<String>>(14)?)?,
         finished_at: parse_optional_datetime(row.get::<_, Option<String>>(15)?)?,
+        updated_at: parse_optional_datetime(row.get::<_, Option<String>>(18)?)?,
     })
 }
 
@@ -684,6 +771,7 @@ fn row_to_project(row: &Row<'_>) -> Result<Project, TodoError> {
         created_at: DateTime::parse_from_rfc3339(&created_at_str)
             .map_err(|e| TodoError::ParseError(e.to_string()))?
             .with_timezone(&Utc),
+        updated_at: parse_optional_datetime(row.get::<_, Option<String>>(5)?)?,
     })
 }
 
@@ -704,10 +792,9 @@ mod tests {
     #[test]
     fn database_initializes_with_schema() {
         let db = test_db();
-        // Should be able to insert into tasks table without error.
         db.conn
             .execute(
-                "INSERT INTO tasks (id, title) VALUES ('test1', 'hello')",
+                "INSERT INTO tasks (id, title, updated_at) VALUES ('test1', 'hello', datetime('now'))",
                 [],
             )
             .expect("insert should work after migration");
@@ -720,7 +807,7 @@ mod tests {
             .conn
             .query_row("PRAGMA user_version;", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 4);
+        assert_eq!(version, 5);
     }
 
     #[test]
@@ -740,6 +827,7 @@ mod tests {
         assert_eq!(fetched.priority, Priority::High);
         assert_eq!(fetched.tags, vec!["backend".to_string(), "urgent".to_string()]);
         assert_eq!(fetched.status, Status::Pending);
+        assert!(fetched.updated_at.is_some());
     }
 
     #[test]
@@ -764,6 +852,7 @@ mod tests {
         assert_eq!(fetched.status, Status::InProgress);
         assert_eq!(fetched.assignee, Some(Creator::Agent));
         assert!(fetched.started_at.is_some());
+        assert!(fetched.updated_at.is_some());
     }
 
     #[test]
@@ -830,13 +919,11 @@ mod tests {
     fn get_next_returns_highest_priority_oldest_first() {
         let db = test_db();
 
-        // Insert low-priority first (older created_at)
         let mut t_low = Task::new("lo1", "Low priority");
         t_low.priority = Priority::Low;
         t_low.created_at = Utc::now() - chrono::Duration::hours(2);
         db.insert_task(&t_low).unwrap();
 
-        // Insert high-priority second (newer created_at)
         let mut t_high = Task::new("hi1", "High priority");
         t_high.priority = Priority::High;
         t_high.created_at = Utc::now() - chrono::Duration::hours(1);
@@ -863,6 +950,7 @@ mod tests {
         let fetched = db.get_project("proj1").unwrap().expect("project should exist");
         assert_eq!(fetched.id, "proj1");
         assert_eq!(fetched.name, "Test Project");
+        assert!(fetched.updated_at.is_some());
     }
 
     #[test]
@@ -913,5 +1001,46 @@ mod tests {
         assert_eq!(stats.total, 2);
         assert_eq!(stats.pending, 1);
         assert_eq!(stats.done, 1);
+    }
+
+    #[test]
+    fn sync_config_round_trip() {
+        let db = test_db();
+        assert!(db.get_sync_config("server_url").unwrap().is_none());
+        db.set_sync_config("server_url", "http://localhost:3000").unwrap();
+        assert_eq!(db.get_sync_config("server_url").unwrap(), Some("http://localhost:3000".to_string()));
+
+        // Update
+        db.set_sync_config("server_url", "http://new:3000").unwrap();
+        assert_eq!(db.get_sync_config("server_url").unwrap(), Some("http://new:3000".to_string()));
+    }
+
+    #[test]
+    fn sync_pending_detects_insert() {
+        let db = test_db();
+        let task = Task::new("abc1", "Sync test");
+        db.insert_task(&task).unwrap();
+
+        let (tasks, deleted, projects, deleted_projects) = db.get_sync_pending().unwrap();
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].id, "abc1");
+        assert!(deleted.is_empty());
+        assert!(projects.is_empty());
+        assert!(deleted_projects.is_empty());
+    }
+
+    #[test]
+    fn sync_pending_resolves_latest_action() {
+        let db = test_db();
+        let mut task = Task::new("abc1", "First");
+        db.insert_task(&task).unwrap();
+
+        // Update — should still be 'upsert'
+        task.title = "Second".to_string();
+        db.update_task(&task).unwrap();
+
+        let (tasks, _, _, _) = db.get_sync_pending().unwrap();
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].title, "Second");
     }
 }
