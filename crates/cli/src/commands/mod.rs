@@ -15,4 +15,5 @@ pub mod search;
 pub mod show;
 pub mod start;
 pub mod stats;
+pub mod sync;
 pub mod undo;

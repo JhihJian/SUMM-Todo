@@ -158,6 +158,8 @@ pub struct Task {
     pub started_at: Option<DateTime<Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub finished_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 impl Task {
@@ -181,6 +183,7 @@ impl Task {
             log: None,
             started_at: None,
             finished_at: None,
+            updated_at: None,
         }
     }
 
@@ -273,6 +276,8 @@ pub struct Project {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     pub created_at: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 impl Project {
@@ -283,6 +288,7 @@ impl Project {
             description: None,
             path: None,
             created_at: Utc::now(),
+            updated_at: None,
         }
     }
 }

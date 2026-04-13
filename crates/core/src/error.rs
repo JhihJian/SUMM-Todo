@@ -37,6 +37,15 @@ pub enum TodoError {
 
     #[error("Project already exists: {0}")]
     ProjectExists(String),
+
+    #[error("Sync error: {0}")]
+    SyncError(String),
+
+    #[error("Sync server unreachable")]
+    SyncServerUnreachable,
+
+    #[error("Sync authentication failed")]
+    SyncAuthFailed,
 }
 
 impl TodoError {
@@ -54,6 +63,9 @@ impl TodoError {
             TodoError::ProjectHasTasks(_) => "E_PROJECT_HAS_TASKS",
             TodoError::ProjectNotFound(_) => "E_PROJECT_NOT_FOUND",
             TodoError::ProjectExists(_) => "E_PROJECT_EXISTS",
+            TodoError::SyncError(_) => "E_SYNC_ERROR",
+            TodoError::SyncServerUnreachable => "E_SYNC_SERVER_UNREACHABLE",
+            TodoError::SyncAuthFailed => "E_SYNC_AUTH_FAILED",
         }
     }
 
