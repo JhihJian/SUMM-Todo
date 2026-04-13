@@ -16,7 +16,7 @@ pub struct AppState {
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = env::args().collect();
-    let config = config::Config::parse(&args).unwrap_or_else(|e| {
+    let config = config::Config::parse(&args[1..]).unwrap_or_else(|e| {
         eprintln!("Configuration error: {e}");
         std::process::exit(1);
     });
