@@ -103,6 +103,89 @@ todo done <id> -m "Implemented JWT auth with RS256"
 | `stats` | Show task statistics |
 | `import` | Bulk import from JSON |
 | `project` | Manage projects (add, edit, list, show, delete) |
+| `sync` | Sync tasks with remote server |
+
+## Multi-Device Sync
+
+SUMM-Todo supports syncing tasks across multiple devices via a self-hosted sync server (`summ-sync`).
+
+### Architecture
+
+```
+Device A                      summ-sync                   Device B
++----------+   HTTP/JSON   +-------------+   HTTP/JSON   +----------+
+| todo CLI  | <-----------> | sync.db     | <-----------> | todo CLI  |
+| todo.db   |               | (SQLite)    |               | todo.db   |
++----------+               +-------------+               +----------+
+```
+
+- **Conflict resolution**: Last Write Wins (LWW) via `updated_at` timestamp
+- **Auth**: API key via `Authorization: Bearer <key>` header
+- **Protocol**: REST over HTTP (use reverse proxy for TLS)
+
+### Server Setup
+
+**Build from source:**
+
+```bash
+cargo build --release -p summ-sync
+```
+
+**Run:**
+
+```bash
+# With CLI flags
+./target/release/summ-sync --port 3000 --db ./sync.db --key my-secret-key
+
+# Or with environment variables
+SYNC_API_KEY=my-secret-key ./target/release/summ-sync --port 3000
+```
+
+| Flag | Env Var | Default | Description |
+|------|---------|---------|-------------|
+| `--port` | `SYNC_PORT` | `3000` | Listen port |
+| `--db` | `SYNC_DB_PATH` | `./sync.db` | Database path |
+| `--key` | `SYNC_API_KEY` | *(required)* | API key for authentication |
+
+**Systemd service example** (`/etc/systemd/system/summ-sync.service`):
+
+```ini
+[Unit]
+Description=SUMM-Todo Sync Server
+After=network.target
+
+[Service]
+Type=simple
+User=todo
+Environment=SYNC_API_KEY=my-secret-key
+ExecStart=/usr/local/bin/summ-sync --port 3000 --db /var/lib/summ-sync/sync.db
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Client Usage
+
+```bash
+# Initialize sync (first time on each device)
+todo sync init --server http://your-server:3000 --key my-secret-key
+
+# Full sync (pull then push)
+todo sync
+
+# One-directional sync
+todo sync push
+todo sync pull
+
+# Check server status
+todo sync status
+```
+
+**Notes:**
+- Running `sync init` multiple times preserves the device ID (only updates server/key)
+- Initial sync pulls all existing server data first, then pushes local data
+- Change tracking is automatic via SQLite triggers (no code changes needed)
 
 ## Projects
 
@@ -204,9 +287,9 @@ See [docs/agent-integration.md](docs/agent-integration.md) for integrating with 
 ## Development
 
 ```bash
-cargo test              # Run tests
-cargo build --release   # Build release binary
-cargo clippy -- -W clippy::all  # Lint
+cargo test --workspace              # Run all tests
+cargo build --release -p todo -p summ-sync  # Build release binaries
+cargo clippy --workspace -- -W clippy::all  # Lint
 ```
 
 ## License
