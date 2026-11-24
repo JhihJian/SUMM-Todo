@@ -63,6 +63,10 @@ pub struct AddArgs {
     #[argh(option)]
     pub parent: Option<String>,
 
+    /// predecessor task id (dependency)
+    #[argh(option)]
+    pub pre: Option<String>,
+
     /// due date
     #[argh(option)]
     pub due: Option<String>,
@@ -178,6 +182,10 @@ pub struct ListArgs {
     #[argh(option)]
     pub parent: Option<String>,
 
+    /// filter by predecessor task id
+    #[argh(option)]
+    pub pre: Option<String>,
+
     /// filter by creator
     #[argh(option)]
     pub creator: Option<String>,
@@ -291,6 +299,14 @@ pub struct EditArgs {
     /// new due date
     #[argh(option)]
     pub due: Option<String>,
+
+    /// new predecessor task id (dependency)
+    #[argh(option)]
+    pub pre: Option<String>,
+
+    /// clear the predecessor dependency
+    #[argh(switch, long = "clear-pre")]
+    pub clear_pre: bool,
 
     /// new description
     #[argh(option, short = 'd', long = "description")]

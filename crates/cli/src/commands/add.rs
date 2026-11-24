@@ -42,6 +42,14 @@ pub fn execute(db: &Database, args: AddArgs, output: &Output) -> Result<String, 
     task.content = args.description;
     task.project_id = project.map(|p| p.id);
 
+    // Resolve dependency: validate existence and reject cycles
+    if let Some(ref pre_id) = args.pre {
+        db.get_task(pre_id)?
+            .ok_or_else(|| TodoError::TaskNotFound(pre_id.clone()))?;
+        db.validate_dependency(&task.id, pre_id)?;
+        task.pre_id = Some(pre_id.clone());
+    }
+
     db.insert_task(&task)?;
     Ok(output.task(&task))
 }

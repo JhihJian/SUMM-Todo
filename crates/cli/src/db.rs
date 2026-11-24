@@ -31,6 +31,7 @@ pub struct TaskFilter {
     pub tags: Option<Vec<String>>,
     pub priority: Option<Priority>,
     pub parent_id: Option<String>,
+    pub pre_id: Option<String>,
     pub creator: Option<Creator>,
     pub since: Option<DateTime<Utc>>,
     pub limit: Option<i64>,
@@ -49,7 +50,7 @@ pub struct Database {
 
 // Column list for tasks (used in SELECT, INSERT, UPDATE)
 const TASK_COLUMNS: &str = "id, title, creator, created_at, \
-    priority, tags, parent_id, due, \
+    priority, tags, parent_id, pre_id, due, \
     status, assignee, blocked_reason, \
     result, artifacts, log, \
     started_at, finished_at, content, project_id, updated_at";
@@ -136,6 +137,12 @@ impl Database {
             self.conn.execute_batch("PRAGMA user_version = 5;")?;
         }
 
+        if version < 6 {
+            let sql = include_str!("../../../migrations/v6.sql");
+            self.conn.execute_batch(sql)?;
+            self.conn.execute_batch("PRAGMA user_version = 6;")?;
+        }
+
         Ok(())
     }
 
@@ -148,10 +155,10 @@ impl Database {
         self.conn.execute(
             &format!("INSERT INTO tasks ({TASK_COLUMNS}) VALUES (
                 ?1, ?2, ?3, ?4,
-                ?5, ?6, ?7, ?8,
-                ?9, ?10, ?11,
-                ?12, ?13, ?14,
-                ?15, ?16, ?17, ?18, ?19
+                ?5, ?6, ?7, ?8, ?9,
+                ?10, ?11, ?12,
+                ?13, ?14, ?15,
+                ?16, ?17, ?18, ?19, ?20
             )"),
             params![
                 task.id,
@@ -161,6 +168,7 @@ impl Database {
                 task.priority.to_string(),
                 serde_json::to_string(&task.tags).unwrap_or_else(|_| "[]".into()),
                 task.parent_id,
+                task.pre_id,
                 task.due.map(|d| d.to_rfc3339()),
                 task.status.to_string(),
                 task.assignee.as_ref().map(|a| a.to_string()),
@@ -196,10 +204,10 @@ impl Database {
         self.conn.execute(
             "UPDATE tasks SET
                 title = ?2, creator = ?3, created_at = ?4,
-                priority = ?5, tags = ?6, parent_id = ?7, due = ?8,
-                status = ?9, assignee = ?10, blocked_reason = ?11,
-                result = ?12, artifacts = ?13, log = ?14,
-                started_at = ?15, finished_at = ?16, content = ?17, project_id = ?18,
+                priority = ?5, tags = ?6, parent_id = ?7, pre_id = ?8, due = ?9,
+                status = ?10, assignee = ?11, blocked_reason = ?12,
+                result = ?13, artifacts = ?14, log = ?15,
+                started_at = ?16, finished_at = ?17, content = ?18, project_id = ?19,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
              WHERE id = ?1",
             params![
@@ -210,6 +218,7 @@ impl Database {
                 task.priority.to_string(),
                 serde_json::to_string(&task.tags).unwrap_or_else(|_| "[]".into()),
                 task.parent_id,
+                task.pre_id,
                 task.due.map(|d| d.to_rfc3339()),
                 task.status.to_string(),
                 task.assignee.as_ref().map(|a| a.to_string()),
@@ -357,6 +366,7 @@ impl Database {
             tags: None,
             priority: None,
             parent_id: None,
+            pre_id: None,
             creator: None,
             since: None,
             limit: Some(limit),
@@ -410,6 +420,13 @@ impl Database {
             conditions.push(format!("parent_id = ?{}", param_idx));
             param_idx += 1;
             param_values.push(Box::new(parent_id.clone()));
+        }
+
+        // pre_id
+        if let Some(ref pre_id) = filter.pre_id {
+            conditions.push(format!("pre_id = ?{}", param_idx));
+            param_idx += 1;
+            param_values.push(Box::new(pre_id.clone()));
         }
 
         // creator
@@ -470,7 +487,20 @@ impl Database {
         Ok(tasks)
     }
 
-    /// Get the next pending task, optionally filtered by tag and/or priority.
+    /// Check whether a task's dependency is satisfied (pre task is done).
+    /// A task without a dependency is always ready.
+    fn dependency_satisfied(&self, task: &Task) -> Result<bool, TodoError> {
+        let Some(ref pre_id) = task.pre_id else {
+            return Ok(true);
+        };
+        let pre = self
+            .get_task(pre_id)?
+            .ok_or_else(|| TodoError::TaskNotFound(pre_id.clone()))?;
+        Ok(pre.status == Status::Done)
+    }
+
+    /// Get the next ready pending task, optionally filtered by tag and/or priority.
+    /// A pending task is ready when its dependency (pre_id) is done or absent.
     pub fn get_next_task(
         &self,
         tag: Option<&str>,
@@ -478,7 +508,7 @@ impl Database {
     ) -> Result<Option<Task>, TodoError> {
         let mut filter = TaskFilter {
             status: Some(vec![Status::Pending]),
-            limit: Some(1),
+            limit: None,
             ..Default::default()
         };
 
@@ -490,8 +520,49 @@ impl Database {
             filter.priority = Some(p.parse::<Priority>()?);
         }
 
-        let mut tasks = self.list_tasks(&filter)?;
-        Ok(tasks.pop())
+        let tasks = self.list_tasks(&filter)?;
+        for task in tasks {
+            if self.dependency_satisfied(&task)? {
+                return Ok(Some(task));
+            }
+        }
+        Ok(None)
+    }
+
+    /// Validate a dependency reference for a task.
+    /// Rejects self-reference, cycles, and tasks that already have a different predecessor.
+    pub fn validate_dependency(&self, task_id: &str, pre_id: &str) -> Result<(), TodoError> {
+        if task_id == pre_id {
+            return Err(TodoError::DependencyCycle(task_id.to_string()));
+        }
+
+        // Follow the pre chain from the target; reaching task_id means a cycle.
+        let mut current = Some(pre_id.to_string());
+        let mut hops = 0usize;
+        while let Some(id) = current {
+            hops += 1;
+            if hops > 10_000 {
+                // Corrupted data: existing chain longer than any sane limit.
+                return Err(TodoError::DependencyCycle(task_id.to_string()));
+            }
+            let t = self
+                .get_task(&id)?
+                .ok_or_else(|| TodoError::TaskNotFound(id.clone()))?;
+            if t.id == task_id {
+                return Err(TodoError::DependencyCycle(task_id.to_string()));
+            }
+            current = t.pre_id;
+        }
+        Ok(())
+    }
+
+    /// Return ids of tasks that depend on the given task (pre_id == id).
+    pub fn get_dependents(&self, id: &str) -> Result<Vec<Task>, TodoError> {
+        let filter = TaskFilter {
+            pre_id: Some(id.to_string()),
+            ..Default::default()
+        };
+        self.list_tasks(&filter)
     }
 
     /// Search tasks by title (and optionally result/log), with optional regex support.
@@ -552,6 +623,13 @@ impl Database {
             conditions.push(format!("parent_id = ?{}", param_idx));
             param_idx += 1;
             param_values.push(Box::new(parent_id.clone()));
+        }
+
+        // pre_id
+        if let Some(ref pre_id) = filter.pre_id {
+            conditions.push(format!("pre_id = ?{}", param_idx));
+            param_idx += 1;
+            param_values.push(Box::new(pre_id.clone()));
         }
 
         // creator
@@ -714,15 +792,15 @@ fn row_to_task(row: &Row<'_>) -> Result<Task, TodoError> {
     let created_at_str: String = row.get(3)?;
     let priority_str: String = row.get(4)?;
     let tags_str: String = row.get(5)?;
-    let status_str: String = row.get(8)?;
-    let assignee_str: Option<String> = row.get(9)?;
-    let artifacts_str: String = row.get(12)?;
+    let status_str: String = row.get(9)?;
+    let assignee_str: Option<String> = row.get(10)?;
+    let artifacts_str: String = row.get(13)?;
 
     Ok(Task {
         id: row.get(0)?,
         title: row.get(1)?,
-        content: row.get(16)?,
-        project_id: row.get(17)?,
+        content: row.get(17)?,
+        project_id: row.get(18)?,
         creator: creator_str.parse::<Creator>()?,
         created_at: DateTime::parse_from_rfc3339(&created_at_str)
             .map_err(|e| TodoError::ParseError(e.to_string()))?
@@ -731,20 +809,21 @@ fn row_to_task(row: &Row<'_>) -> Result<Task, TodoError> {
         tags: serde_json::from_str(&tags_str)
             .map_err(|e| TodoError::ParseError(e.to_string()))?,
         parent_id: row.get(6)?,
-        due: parse_optional_datetime(row.get::<_, Option<String>>(7)?)?,
+        pre_id: row.get(7)?,
+        due: parse_optional_datetime(row.get::<_, Option<String>>(8)?)?,
         status: status_str.parse::<Status>()?,
         assignee: match assignee_str {
             Some(s) => Some(s.parse::<Creator>()?),
             None => None,
         },
-        blocked_reason: row.get(10)?,
-        result: row.get(11)?,
+        blocked_reason: row.get(11)?,
+        result: row.get(12)?,
         artifacts: serde_json::from_str(&artifacts_str)
             .map_err(|e| TodoError::ParseError(e.to_string()))?,
-        log: row.get(13)?,
-        started_at: parse_optional_datetime(row.get::<_, Option<String>>(14)?)?,
-        finished_at: parse_optional_datetime(row.get::<_, Option<String>>(15)?)?,
-        updated_at: parse_optional_datetime(row.get::<_, Option<String>>(18)?)?,
+        log: row.get(14)?,
+        started_at: parse_optional_datetime(row.get::<_, Option<String>>(15)?)?,
+        finished_at: parse_optional_datetime(row.get::<_, Option<String>>(16)?)?,
+        updated_at: parse_optional_datetime(row.get::<_, Option<String>>(19)?)?,
     })
 }
 
@@ -807,7 +886,7 @@ mod tests {
             .conn
             .query_row("PRAGMA user_version;", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 5);
+        assert_eq!(version, 6);
     }
 
     #[test]

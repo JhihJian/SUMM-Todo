@@ -45,6 +45,9 @@ pub fn execute(db: &Database, args: ImportArgs, _output: &Output) -> Result<Stri
         if let Some(parent) = item["parent_id"].as_str() {
             task.parent_id = Some(parent.to_string());
         }
+        if let Some(pre) = item["pre_id"].as_str() {
+            task.pre_id = Some(pre.to_string());
+        }
 
         db.insert_task(&task)?;
         count += 1;

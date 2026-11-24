@@ -28,6 +28,16 @@ pub fn execute(db: &Database, args: EditArgs, output: &Output) -> Result<String,
         task.due = Some(crate::time_parse::parse_due(&due)?);
     }
 
+    // Handle dependency: set new one (validated) or clear
+    if args.clear_pre {
+        task.pre_id = None;
+    } else if let Some(ref pre_id) = args.pre {
+        db.get_task(pre_id)?
+            .ok_or_else(|| TodoError::TaskNotFound(pre_id.clone()))?;
+        db.validate_dependency(&task.id, pre_id)?;
+        task.pre_id = Some(pre_id.clone());
+    }
+
     // Handle content/description
     if args.clear_content {
         task.content = None;

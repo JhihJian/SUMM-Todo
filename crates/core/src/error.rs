@@ -32,6 +32,15 @@ pub enum TodoError {
     #[error("Project has {0} tasks. Delete or move them first.")]
     ProjectHasTasks(i64),
 
+    #[error("Dependency cycle detected: {0}")]
+    DependencyCycle(String),
+
+    #[error("Dependency not satisfied: task {0} is not done")]
+    DependencyNotSatisfied(String),
+
+    #[error("Task already has a predecessor: {0}")]
+    DependencyConflict(String),
+
     #[error("Project not found: {0}")]
     ProjectNotFound(String),
 
@@ -61,6 +70,9 @@ impl TodoError {
             TodoError::ParseError(_) => "E_PARSE_ERROR",
             TodoError::Io(_) => "E_IO",
             TodoError::ProjectHasTasks(_) => "E_PROJECT_HAS_TASKS",
+            TodoError::DependencyCycle(_) => "E_DEPENDENCY_CYCLE",
+            TodoError::DependencyNotSatisfied(_) => "E_DEPENDENCY_NOT_SATISFIED",
+            TodoError::DependencyConflict(_) => "E_DEPENDENCY_CONFLICT",
             TodoError::ProjectNotFound(_) => "E_PROJECT_NOT_FOUND",
             TodoError::ProjectExists(_) => "E_PROJECT_EXISTS",
             TodoError::SyncError(_) => "E_SYNC_ERROR",

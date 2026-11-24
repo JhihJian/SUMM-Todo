@@ -142,6 +142,8 @@ pub struct Task {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub pre_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub due: Option<DateTime<Utc>>,
     pub status: Status,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -174,6 +176,7 @@ impl Task {
             priority: Priority::Medium,
             tags: Vec::new(),
             parent_id: None,
+            pre_id: None,
             due: None,
             status: Status::Pending,
             assignee: None,

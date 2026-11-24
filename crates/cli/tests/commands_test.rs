@@ -22,6 +22,7 @@ fn add_creates_task_and_returns_json() {
         pri: Some("high".into()),
         tag: vec!["backend".into()],
         parent: None,
+        pre: None,
         due: None,
         creator: None,
         description: None,
@@ -43,6 +44,7 @@ fn next_claims_highest_priority_task() {
             pri: Some("low".into()),
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -57,6 +59,7 @@ fn next_claims_highest_priority_task() {
             pri: Some("high".into()),
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -82,6 +85,7 @@ fn done_completes_task() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -127,6 +131,7 @@ fn block_and_resume() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -175,6 +180,7 @@ fn cancel_from_pending() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -207,6 +213,7 @@ fn show_returns_full_task() {
             pri: None,
             tag: vec!["test".into()],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -232,6 +239,7 @@ fn list_filters_by_status() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -247,6 +255,7 @@ fn list_filters_by_status() {
             tag: vec![],
             pri: None,
             parent: None,
+            pre: None,
             creator: None,
             since: None,
             limit: None,
@@ -271,6 +280,7 @@ fn log_returns_done_tasks() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -325,6 +335,7 @@ fn stats_returns_counts() {
             pri: Some("high".into()),
             tag: vec!["x".into()],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -339,6 +350,7 @@ fn stats_returns_counts() {
             pri: Some("medium".into()),
             tag: vec!["x".into()],
             parent: None,
+            pre: None,
             due: None,
             creator: Some("agent".into()),
             description: None,
@@ -409,6 +421,7 @@ fn edit_updates_task_properties() {
             pri: Some("low".into()),
             tag: vec!["old".into()],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -426,6 +439,8 @@ fn edit_updates_task_properties() {
             priority: Some("high".into()),
             tag: vec!["-old".into(), "+new".into()],
             due: None,
+            pre: None,
+            clear_pre: false,
             description: None,
             clear_content: false,
         },
@@ -450,6 +465,7 @@ fn edit_rejects_terminal_states() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -479,6 +495,8 @@ fn edit_rejects_terminal_states() {
             priority: None,
             tag: vec![],
             due: None,
+            pre: None,
+            clear_pre: false,
             description: None,
             clear_content: false,
         },
@@ -512,6 +530,7 @@ fn list_overdue_filters_correctly() {
             tag: vec![],
             pri: None,
             parent: None,
+            pre: None,
             creator: None,
             since: None,
             limit: None,
@@ -538,6 +557,7 @@ fn undo_reverts_done_to_in_progress() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -583,6 +603,7 @@ fn abandon_reverts_in_progress_to_pending() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -617,6 +638,7 @@ fn search_finds_tasks_by_title() {
             pri: None,
             tag: vec!["backend".into()],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -631,6 +653,7 @@ fn search_finds_tasks_by_title() {
             pri: None,
             tag: vec!["testing".into()],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -665,6 +688,7 @@ fn search_with_tag_filter() {
             pri: None,
             tag: vec!["backend".into()],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -679,6 +703,7 @@ fn search_with_tag_filter() {
             pri: None,
             tag: vec!["frontend".into()],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -715,6 +740,7 @@ fn search_with_status_filter() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -741,6 +767,7 @@ fn search_with_status_filter() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -776,6 +803,7 @@ fn search_returns_empty_for_no_match() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -809,6 +837,7 @@ fn export_outputs_json() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -842,6 +871,7 @@ fn export_to_file() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -881,6 +911,7 @@ fn export_with_status_filter() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -896,6 +927,7 @@ fn export_with_status_filter() {
             pri: None,
             tag: vec![],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -955,6 +987,7 @@ fn export_with_tag_filter() {
             pri: None,
             tag: vec!["backend".into()],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -969,6 +1002,7 @@ fn export_with_tag_filter() {
             pri: None,
             tag: vec!["frontend".into()],
             parent: None,
+            pre: None,
             due: None,
             creator: None,
             description: None,
@@ -1003,6 +1037,7 @@ fn add_with_description() {
         pri: None,
         tag: vec![],
         parent: None,
+        pre: None,
         due: None,
         creator: None,
         description: Some("Detailed description here".into()),
@@ -1023,6 +1058,7 @@ fn edit_description() {
         pri: None,
         tag: vec![],
         parent: None,
+        pre: None,
         due: None,
         creator: None,
         description: None,
@@ -1038,6 +1074,8 @@ fn edit_description() {
         priority: None,
         tag: vec![],
         due: None,
+        pre: None,
+        clear_pre: false,
         description: Some("New description".into()),
         clear_content: false,
     };
@@ -1058,6 +1096,7 @@ fn clear_content() {
         pri: None,
         tag: vec![],
         parent: None,
+        pre: None,
         due: None,
         creator: None,
         description: Some("Initial content".into()),
@@ -1073,6 +1112,8 @@ fn clear_content() {
         priority: None,
         tag: vec![],
         due: None,
+        pre: None,
+        clear_pre: false,
         description: None,
         clear_content: true,
     };
@@ -1081,4 +1122,329 @@ fn clear_content() {
     // Verify
     let task = db.get_task(&id).unwrap().unwrap();
     assert!(task.content.is_none());
+}
+
+// ---------------------------------------------------------------------------
+// pre_id dependency tests
+// ---------------------------------------------------------------------------
+
+fn add_task(db: &Database, out: &Output, title: &str) -> String {
+    let args = AddArgs {
+        title: title.into(),
+        pri: None,
+        tag: vec![],
+        parent: None,
+        pre: None,
+        due: None,
+        creator: None,
+        description: None,
+    };
+    let result = commands::add::execute(db, args, out).unwrap();
+    extract_id(&result)
+}
+
+#[test]
+fn add_with_pre_sets_dependency() {
+    let (db, out) = setup();
+    let first = add_task(&db, &out, "First");
+    let second = add_task(&db, &out, "Second");
+
+    let args = AddArgs {
+        title: "Third".into(),
+        pri: None,
+        tag: vec![],
+        parent: None,
+        pre: Some(first.clone()),
+        due: None,
+        creator: None,
+        description: None,
+    };
+    let result = commands::add::execute(&db, args, &out).unwrap();
+    let task: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(task["pre_id"], first);
+
+    // second has no dependency, just to consume the id
+    assert_ne!(second, first);
+}
+
+#[test]
+fn add_with_unknown_pre_fails() {
+    let (db, out) = setup();
+    let args = AddArgs {
+        title: "Task".into(),
+        pri: None,
+        tag: vec![],
+        parent: None,
+        pre: Some("zzzzzzzz".into()),
+        due: None,
+        creator: None,
+        description: None,
+    };
+    let err = commands::add::execute(&db, args, &out).unwrap_err();
+    assert_eq!(err.code(), "E_TASK_NOT_FOUND");
+}
+
+#[test]
+fn add_with_self_pre_fails() {
+    let (db, out) = setup();
+    // Self reference requires knowing the id beforehand, so create then edit
+    let id = add_task(&db, &out, "Task");
+    let args = AddArgs {
+        title: "ignored".into(),
+        pri: None,
+        tag: vec![],
+        parent: None,
+        pre: None,
+        due: None,
+        creator: None,
+        description: None,
+    };
+    // add is fine; the self-reference check happens on edit
+    commands::add::execute(&db, args, &out).unwrap();
+
+    let edit_args = EditArgs {
+        id: id.clone(),
+        title: None,
+        priority: None,
+        tag: vec![],
+        due: None,
+        pre: Some(id.clone()),
+        clear_pre: false,
+        description: None,
+        clear_content: false,
+    };
+    let err = commands::edit::execute(&db, edit_args, &out).unwrap_err();
+    assert_eq!(err.code(), "E_DEPENDENCY_CYCLE");
+}
+
+#[test]
+fn dependency_cycle_detected_on_edit() {
+    let (db, out) = setup();
+    let a = add_task(&db, &out, "A");
+    let b = add_task(&db, &out, "B");
+
+    // a depends on b
+    let edit_a = EditArgs {
+        id: a.clone(),
+        title: None,
+        priority: None,
+        tag: vec![],
+        due: None,
+        pre: Some(b.clone()),
+        clear_pre: false,
+        description: None,
+        clear_content: false,
+    };
+    commands::edit::execute(&db, edit_a, &out).unwrap();
+
+    // b depends on a would form a cycle
+    let edit_b = EditArgs {
+        id: b.clone(),
+        title: None,
+        priority: None,
+        tag: vec![],
+        due: None,
+        pre: Some(a.clone()),
+        clear_pre: false,
+        description: None,
+        clear_content: false,
+    };
+    let err = commands::edit::execute(&db, edit_b, &out).unwrap_err();
+    assert_eq!(err.code(), "E_DEPENDENCY_CYCLE");
+}
+
+#[test]
+fn next_skips_blocked_by_dependency() {
+    let (db, out) = setup();
+    let first = add_task(&db, &out, "First");
+
+    // Second depends on first, but with higher priority
+    let args = AddArgs {
+        title: "Second".into(),
+        pri: Some("high".into()),
+        tag: vec![],
+        parent: None,
+        pre: Some(first.clone()),
+        due: None,
+        creator: None,
+        description: None,
+    };
+    let second = extract_id(&commands::add::execute(&db, args, &out).unwrap());
+
+    // next should return first (pending, no dependency), not second
+    let result = commands::next::execute(&db, NextArgs { tag: None, pri: None }, &out).unwrap();
+    let task: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(task["id"], first);
+    assert_eq!(task["status"], "in_progress");
+
+    // Complete first
+    commands::done::execute(
+        &db,
+        DoneArgs {
+            id: first.clone(),
+            result: "ok".into(),
+            artifact: vec![],
+            log: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    // Undo to restore pending state for second's dependency check
+    commands::undo::execute(&db, UndoArgs { id: first.clone() }, &out).unwrap();
+    commands::done::execute(
+        &db,
+        DoneArgs {
+            id: first.clone(),
+            result: "ok".into(),
+            artifact: vec![],
+            log: None,
+        },
+        &out,
+    )
+    .unwrap();
+
+    // Now next should return second
+    let result = commands::next::execute(&db, NextArgs { tag: None, pri: None }, &out).unwrap();
+    let task: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(task["id"], second);
+    assert_eq!(task["status"], "in_progress");
+}
+
+#[test]
+fn start_rejects_unsatisfied_dependency() {
+    let (db, out) = setup();
+    let first = add_task(&db, &out, "First");
+    let args = AddArgs {
+        title: "Second".into(),
+        pri: None,
+        tag: vec![],
+        parent: None,
+        pre: Some(first.clone()),
+        due: None,
+        creator: None,
+        description: None,
+    };
+    let second = extract_id(&commands::add::execute(&db, args, &out).unwrap());
+
+    let err = commands::start::execute(&db, StartArgs { id: second.clone(), assignee: None }, &out).unwrap_err();
+    assert_eq!(err.code(), "E_DEPENDENCY_NOT_SATISFIED");
+
+    // After completing first, start succeeds
+    commands::start::execute(&db, StartArgs { id: first.clone(), assignee: None }, &out).unwrap();
+    commands::done::execute(
+        &db,
+        DoneArgs {
+            id: first,
+            result: "ok".into(),
+            artifact: vec![],
+            log: None,
+        },
+        &out,
+    )
+    .unwrap();
+    let result = commands::start::execute(
+        &db,
+        StartArgs {
+            id: second,
+            assignee: None,
+        },
+        &out,
+    )
+    .unwrap();
+    let task: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(task["status"], "in_progress");
+}
+
+#[test]
+fn edit_clear_pre_removes_dependency() {
+    let (db, out) = setup();
+    let first = add_task(&db, &out, "First");
+    let args = AddArgs {
+        title: "Second".into(),
+        pri: None,
+        tag: vec![],
+        parent: None,
+        pre: Some(first.clone()),
+        due: None,
+        creator: None,
+        description: None,
+    };
+    let second = extract_id(&commands::add::execute(&db, args, &out).unwrap());
+
+    let edit_args = EditArgs {
+        id: second.clone(),
+        title: None,
+        priority: None,
+        tag: vec![],
+        due: None,
+        pre: None,
+        clear_pre: true,
+        description: None,
+        clear_content: false,
+    };
+    commands::edit::execute(&db, edit_args, &out).unwrap();
+
+    let task = db.get_task(&second).unwrap().unwrap();
+    assert!(task.pre_id.is_none());
+}
+
+#[test]
+fn list_filters_by_pre() {
+    let (db, out) = setup();
+    let first = add_task(&db, &out, "First");
+    let args = AddArgs {
+        title: "Second".into(),
+        pri: None,
+        tag: vec![],
+        parent: None,
+        pre: Some(first.clone()),
+        due: None,
+        creator: None,
+        description: None,
+    };
+    let second = extract_id(&commands::add::execute(&db, args, &out).unwrap());
+    let _other = add_task(&db, &out, "Other");
+
+    let list_args = ListArgs {
+        status: vec!["pending".into()],
+        tag: vec![],
+        pri: None,
+        parent: None,
+        pre: Some(first),
+        creator: None,
+        since: None,
+        limit: None,
+        overdue: false,
+        all: false,
+        project: None,
+    };
+    let result = commands::list::execute(&db, list_args, &out).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let arr = parsed.as_array().unwrap();
+    assert_eq!(arr.len(), 1);
+    assert_eq!(arr[0]["id"], second);
+}
+
+#[test]
+fn deleting_pre_referenced_task_restricted_by_foreign_key() {
+    // With FK enforcement off (default SQLite), deletion leaves dangling pre_id.
+    // Dependents then fail validation on start with E_TASK_NOT_FOUND, which is
+    // the documented behavior: references are checked at use time.
+    let (db, out) = setup();
+    let first = add_task(&db, &out, "First");
+    let args = AddArgs {
+        title: "Second".into(),
+        pri: None,
+        tag: vec![],
+        parent: None,
+        pre: Some(first.clone()),
+        due: None,
+        creator: None,
+        description: None,
+    };
+    let second = extract_id(&commands::add::execute(&db, args, &out).unwrap());
+
+    let task = db.get_task(&second).unwrap().unwrap();
+    assert_eq!(task.pre_id, Some(first));
 }

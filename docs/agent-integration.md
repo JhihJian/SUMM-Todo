@@ -106,6 +106,30 @@ todo next [--tag=<filter>] [--pri=<priority>]
 todo done <id> -m "What you did" --artifact="commit:abc123"
 ```
 
+### Task Dependencies
+
+Tasks can declare an ordering dependency with `pre_id`. A task is only ready
+when its predecessor is done:
+
+```bash
+# Create a task that must wait for abc123 to complete
+todo add "Deploy to staging" --pre abc123
+
+# next and start respect dependencies:
+# - next skips pending tasks whose predecessor is not done
+# - start rejects with E_DEPENDENCY_NOT_SATISFIED
+
+# Re-point or remove a dependency later
+todo edit <id> --pre xyz789
+todo edit <id> --clear-pre
+
+# List all tasks waiting on abc123
+todo list --pre abc123
+```
+
+Self-reference and dependency cycles are rejected at creation/edit time with
+`E_DEPENDENCY_CYCLE`.
+
 ## Commands Reference
 
 | Command | Purpose |
@@ -132,6 +156,7 @@ todo add "Task title" \
   --tag backend \
   --tag api \
   --parent <parent_id> \
+  --pre <predecessor_id> \
   --due "tomorrow" \
   --creator agent|human
 ```
@@ -144,6 +169,7 @@ todo list \
   --tag backend \
   --pri high \
   --parent <id> \
+  --pre <predecessor_id> \
   --creator agent \
   --since "2026-01-01" \
   --limit 10
@@ -185,6 +211,9 @@ message: "Task not found: abc123"
 | `E_INVALID_TRANSITION` | Invalid status change | Attempting done from pending |
 | `E_RESULT_REQUIRED` | Missing result on completion | `todo done` without `-m` |
 | `E_BLOCKED_REASON_REQUIRED` | Missing reason when blocking | `todo block` without `--reason` |
+| `E_DEPENDENCY_CYCLE` | Dependency would form a cycle | `--pre` referencing own chain |
+| `E_DEPENDENCY_NOT_SATISFIED` | Predecessor is not done | `todo start` on a task with unfinished `pre_id` |
+| `E_DEPENDENCY_CONFLICT` | Task already has a predecessor | Reserved for future per-edge constraints |
 | `E_INVALID_INPUT` | Invalid parameter value | Bad priority, status, etc. |
 | `E_PARSE_ERROR` | Failed to parse input | Invalid date format, etc. |
 | `E_DATABASE` | Database operation failed | Corrupted DB, locked file |

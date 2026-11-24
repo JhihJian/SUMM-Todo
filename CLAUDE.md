@@ -68,6 +68,13 @@ cancelled  blocked
           in_progress (resume)
 ```
 
+### Task Dependencies
+
+- `pre_id` field orders tasks: a task is ready only when its predecessor is done
+- `todo next` skips pending tasks whose predecessor is not done
+- `todo start` fails with `E_DEPENDENCY_NOT_SATISFIED` if the predecessor is not done
+- Cycles and self-reference are rejected (`E_DEPENDENCY_CYCLE`)
+
 ### Output Modes
 
 | Mode | Flag | Use Case |
@@ -79,8 +86,9 @@ cancelled  blocked
 ### Database
 
 - Location: `~/.todo/todo.db` (or `TODO_DB_PATH` env var)
-- Migrations: `migrations/v1.sql` through `v5.sql` - loaded via `include_str!`
+- Migrations: `migrations/v1.sql` through `v6.sql` - loaded via `include_str!`
 - v5 adds: `updated_at`, `sync_config`, `sync_log` (change tracking triggers)
+- v6 adds: `pre_id` (task dependency / ordering)
 - Uses WAL mode for concurrent access
 - Schema version tracked via `PRAGMA user_version`
 
